@@ -1,0 +1,48 @@
+audio:
+  sample_rate: 44100
+  mono: true
+  max_duration: null   # seconds; null means full track
+  offset: 0.0
+
+features:
+  hop_length: 512
+  n_fft: 2048
+  segment_min_seconds: 8.0
+  segment_max_seconds: 32.0
+  novelty_smooth_seconds: 1.0
+  max_segments: 12
+
+stems:
+  enabled: false
+  demucs_model: htdemucs
+  device: auto
+  keep_demucs_output: true
+
+models:
+  # Recommended route: train a checkpoint with scripts/train_classifier.py,
+  # then set kpop_classifier_path. With a checkpoint, tagging is:
+  # MERT embedding + optional acoustic features -> K-pop multi-label classifier.
+  use_mert: false
+  mert_model_name_or_path: m-a-p/MERT-v1-95M
+  mert_device: cuda
+  mert_max_duration: 45.0
+  mert_chunk_seconds: 20.0
+  mert_dtype: auto
+  trust_remote_code: true
+  classifier_device: cuda
+  kpop_classifier_path: null
+  threshold: 0.20
+  top_k: 12
+  fallback_to_acoustic_prior: true
+  essentia_model_path: null
+
+report:
+  language: zh
+  include_debug: false
+  title_prefix: KPopScope Analysis
+  mode: evidence_grounded
+
+output:
+  plots: true
+  save_json: true
+  save_markdown: true

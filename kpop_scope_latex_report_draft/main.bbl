@@ -1,0 +1,99 @@
+\begin{thebibliography}{12}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Li et~al.(2023)Li, Yuan, Zhang, Ma, Chen, Yin, Xiao, Lin, Ragni,
+  Benetos, et~al.]{mert2023}
+Yizhi Li, Ruibin Yuan, Ge~Zhang, Yinghao Ma, Xingran Chen, Hanzhi Yin, Chenghao
+  Xiao, Chenghua Lin, Anton Ragni, Emmanouil Benetos, et~al.
+\newblock Mert: Acoustic music understanding model with large-scale
+  self-supervised training.
+\newblock \emph{arXiv preprint arXiv:2306.00107}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2306.00107}.
+
+\bibitem[{Music Information Retrieval Evaluation
+  eXchange}(2020)]{mirex2020kpop}
+{Music Information Retrieval Evaluation eXchange}.
+\newblock Mirex 2020: Audio k-pop genre classification.
+\newblock
+  \url{https://music-ir.org/mirex/wiki/2020:Audio_K-POP_Genre_Classification},
+  2020.
+
+\bibitem[Ferraro et~al.(2021)Ferraro, Kim, Lee, Kim, Jo, Lim, Lim, Jang, Kim,
+  Serra, and Bogdanov]{ferraro2021melon}
+Andres Ferraro, Yuntae Kim, Soohyeon Lee, Biho Kim, Namjun Jo, Semi Lim, Suyon
+  Lim, Jungtaek Jang, Sehwan Kim, Xavier Serra, and Dmitry Bogdanov.
+\newblock Melon playlist dataset: A public dataset for audio-based playlist
+  generation and music tagging.
+\newblock \emph{arXiv preprint arXiv:2102.00201}, 2021.
+\newblock URL \url{https://arxiv.org/abs/2102.00201}.
+
+\bibitem[{Google Research}(2023)]{musiccaps2023}
+{Google Research}.
+\newblock Musiccaps dataset.
+\newblock \url{https://huggingface.co/datasets/google/MusicCaps}, 2023.
+
+\bibitem[Doh et~al.(2023)Doh, Choi, Lee, and Nam]{doh2023lpmusiccaps}
+SeungHeon Doh, Keunwoo Choi, Jongpil Lee, and Juhan Nam.
+\newblock Lp-musiccaps: Llm-based pseudo music captioning.
+\newblock \emph{arXiv preprint arXiv:2307.16372}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2307.16372}.
+
+\bibitem[Deng et~al.(2023)Deng, Ma, Liu, Guo, Zhang, Chen, Huang, and
+  Benetos]{deng2023musilingo}
+Zihao Deng, Yinghao Ma, Yudong Liu, Rongchen Guo, Ge~Zhang, Wenhu Chen, Wenhao
+  Huang, and Emmanouil Benetos.
+\newblock Musilingo: Bridging music and text with pre-trained language models
+  for music captioning and query response.
+\newblock \emph{arXiv preprint arXiv:2309.08730}, 2023.
+\newblock URL \url{https://arxiv.org/abs/2309.08730}.
+
+\bibitem[D{\'e}fossez et~al.(2019)D{\'e}fossez, Usunier, Bottou, and
+  Bach]{defossez2019demucs}
+Alexandre D{\'e}fossez, Nicolas Usunier, L{\'e}on Bottou, and Francis Bach.
+\newblock Music source separation in the waveform domain.
+\newblock \emph{arXiv preprint arXiv:1911.13254}, 2019.
+\newblock URL \url{https://arxiv.org/abs/1911.13254}.
+
+\bibitem[{Meta AI / Facebook Research}(2024)]{demucsrepo}
+{Meta AI / Facebook Research}.
+\newblock Demucs: Music source separation.
+\newblock \url{https://github.com/facebookresearch/demucs}, 2024.
+
+\bibitem[Haunschmid et~al.(2020)Haunschmid, Manilow, and
+  Widmer]{haunschmid2020audiolime}
+Verena Haunschmid, Ethan Manilow, and Gerhard Widmer.
+\newblock audiolime: Listenable explanations using source separation.
+\newblock \emph{arXiv preprint arXiv:2008.00582}, 2020.
+\newblock URL \url{https://arxiv.org/abs/2008.00582}.
+
+\bibitem[Bogdanov et~al.(2019)Bogdanov, Won, Tovstogan, Porter, and
+  Serra]{bogdanov2019mtgjamendo}
+Dmitry Bogdanov, Minz Won, Philip Tovstogan, Alastair Porter, and Xavier Serra.
+\newblock The mtg-jamendo dataset for automatic music tagging.
+\newblock In \emph{Proceedings of the 36th International Conference on Machine
+  Learning, Long Workshop on Machine Learning for Music Discovery}, 2019.
+\newblock URL \url{https://mtg.github.io/mtg-jamendo-dataset/}.
+
+\bibitem[Nieto et~al.(2020)Nieto, Mysore, Wang, Smith, Schlüter, Grill, and
+  McFee]{nieto2020msa}
+Oriol Nieto, Gautham~J. Mysore, Cheng-i Wang, Jordan B.~L. Smith, Jan
+  Schlüter, Thomas Grill, and Brian McFee.
+\newblock Audio-based music structure analysis: Current trends, open
+  challenges, and applications.
+\newblock \emph{Transactions of the International Society for Music Information
+  Retrieval}, 3\penalty0 (1):\penalty0 246--263, 2020.
+\newblock URL \url{https://transactions.ismir.net/articles/10.5334/tismir.54}.
+
+\bibitem[Peeters(2023)]{peeters2023msa}
+Geoffroy Peeters.
+\newblock Self-similarity-based and novelty-based loss for music structure
+  analysis.
+\newblock In \emph{Proceedings of the 24th International Society for Music
+  Information Retrieval Conference}, 2023.
+\newblock URL \url{https://archives.ismir.net/ismir2023/paper/000089.pdf}.
+
+\end{thebibliography}

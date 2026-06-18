@@ -1,0 +1,44 @@
+style_tags:
+  - k-pop dance
+  - dance-pop
+  - electropop
+  - hip-hop pop
+  - r&b pop
+  - ballad
+  - rock pop
+  - retro synth
+  - jersey club influence
+  - trap-pop
+
+mood_tags:
+  - energetic
+  - bright
+  - dark
+  - dreamy
+  - sentimental
+  - confident
+  - cute
+  - dramatic
+  - chill
+
+arrangement_tags:
+  - heavy drums
+  - synth bass
+  - vocal layering
+  - rap section likely
+  - drop chorus
+  - chorus energy lift
+  - pre-chorus build-up
+  - dance break likely
+  - sparse verse
+  - bright high-frequency synth
+  - low-frequency drive
+
+structure_labels:
+  - intro
+  - verse
+  - pre-chorus
+  - chorus/drop
+  - bridge
+  - dance break
+  - outro

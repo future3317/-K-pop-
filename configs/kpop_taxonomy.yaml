@@ -1,0 +1,357 @@
+groups:
+  Style:
+    - name: k-pop dance
+      group: Style
+      description_zh: 面向舞台表演和齐舞副歌的 K-pop 舞曲取向。
+      positive_cues: [中高速 BPM, 稳定重拍, 副歌能量释放, 高起音密度]
+      negative_cues: [整体低能量, 长时间无鼓组推进, 抒情慢板主导]
+      audio_evidence: [tempo.bpm, onset.onset_density_per_sec, segment.energy_mean, chorus_energy_lift]
+      annotation_guideline_zh: 当歌曲整体适合编舞展示且副歌/Drop 有明确推进时勾选。
+      uncertainty_policy: 只有速度快但缺少段落释放时标为不确定。
+    - name: dance-pop
+      group: Style
+      description_zh: 流行旋律与舞曲律动结合的风格。
+      positive_cues: [BPM 约 110-140, 清晰鼓点, 明亮 hook, 副歌重复]
+      negative_cues: [自由速度, 低鼓点密度, 纯 ballad 编配]
+      audio_evidence: [tempo.bpm, beat_density_per_sec, onset_density, repetition_score]
+      annotation_guideline_zh: 听感以流行副歌和稳定舞曲节拍为核心时勾选。
+      uncertainty_policy: 与 electropop 或 synth-pop 重叠时可多选。
+    - name: electropop
+      group: Style
+      description_zh: 以电子合成器、采样和明亮高频为主要音色来源的流行取向。
+      positive_cues: [频谱质心较高, high band 占比高, synth hook 明显]
+      negative_cues: [原声乐器主导, 高频暗淡, 鼓贝斯极少]
+      audio_evidence: [spectral.centroid_hz, high_6000_12000, other.high_energy_ratio_mean]
+      annotation_guideline_zh: 合成器音色明显承担 hook 或伴奏主体时勾选。
+      uncertainty_policy: 无 stems 时不要把高频亮度直接等同于 synth。
+    - name: synth-pop
+      group: Style
+      description_zh: 复古或现代合成器铺底明显的流行风格。
+      positive_cues: [稳定电子鼓, pad/lead synth, 中高频持续铺陈]
+      negative_cues: [band sound 主导, acoustic intro 长时间主导]
+      audio_evidence: [spectral_brightness, other stem share, highmid ratio]
+      annotation_guideline_zh: 听到持续 synth 纹理或复古电子律动时勾选。
+      uncertainty_policy: 仅凭 tagger 低分不勾选。
+    - name: hip-hop pop
+      group: Style
+      description_zh: 结合 rap/spoken rhythm、切分鼓组和流行副歌的取向。
+      positive_cues: [中速或 half-time, 切分鼓组, rap-like 段落]
+      negative_cues: [全曲旋律化, 无明显切分或 rap 节奏]
+      audio_evidence: [onset_density, low frequency ratio, segment label verse]
+      annotation_guideline_zh: 主歌或 break 明显有 rap/hip-hop groove 时勾选。
+      uncertainty_policy: 纯音频难判歌词 flow 时标记不确定。
+    - name: r&b pop
+      group: Style
+      description_zh: 更强调人声旋律、和声色彩和中速 groove 的流行取向。
+      positive_cues: [中速 BPM, 人声突出, 鼓点不过密, 和声/动态细腻]
+      negative_cues: [持续高能舞曲, 重 EDM drop]
+      audio_evidence: [tempo.bpm, vocal share, onset density, chroma stability]
+      annotation_guideline_zh: 人声和和声比舞蹈 drop 更突出时勾选。
+      uncertainty_policy: 无人声 stem 时结合听感确认。
+    - name: bubblegum pop
+      group: Style
+      description_zh: 明亮、轻快、甜美的流行概念。
+      positive_cues: [高频亮, 速度轻快, 低频不过重, cute/bright mood]
+      negative_cues: [暗色低频, aggressive trap, 沉重概念]
+      audio_evidence: [centroid, high band ratio, tempo, low ratio]
+      annotation_guideline_zh: 整体听感可爱、明亮、轻盈时勾选。
+      uncertainty_policy: 避免仅因女团歌曲就默认勾选。
+    - name: ballad
+      group: Style
+      description_zh: 以抒情旋律、人声和动态铺陈为核心。
+      positive_cues: [慢速, 鼓点少, 动态渐进, 人声突出]
+      negative_cues: [高密度舞曲鼓组, drop chorus, dance break]
+      audio_evidence: [tempo.bpm, onset density, vocal share, dynamic range]
+      annotation_guideline_zh: 听感以抒情表达而非编舞推进为核心时勾选。
+      uncertainty_policy: 中速抒情舞曲可与 r&b pop 并存。
+    - name: retro pop
+      group: Style
+      description_zh: 具有复古 synth、disco 或 old-school pop 色彩。
+      positive_cues: [稳定四拍, 复古 synth/鼓机, 中高频亮]
+      negative_cues: [现代 trap drop 主导, 原声 ballad]
+      audio_evidence: [tempo, spectral brightness, beat density]
+      annotation_guideline_zh: 有明确复古音色或 disco/synthwave 听感时勾选。
+      uncertainty_policy: 只靠 BPM 不足以判断 retro。
+    - name: tropical/summer pop
+      group: Style
+      description_zh: 夏日、轻快、热带风格的流行取向。
+      positive_cues: [轻快节奏, 明亮高频, 低频较轻, 清爽 hook]
+      negative_cues: [dark concept, 重低频压迫, 慢板抒情]
+      audio_evidence: [centroid, high band, low band, tempo]
+      annotation_guideline_zh: 听感清爽、阳光、适合 summer concept 时勾选。
+      uncertainty_policy: 需要结合人工听感确认。
+    - name: trap-pop
+      group: Style
+      description_zh: trap 鼓组、sub-bass 和流行旋律结合。
+      positive_cues: [低频占比高, 切分 hi-hat, half-time groove]
+      negative_cues: [四拍 house 主导, 无低频重量]
+      audio_evidence: [low_20_250, onset density, tempo normalized]
+      annotation_guideline_zh: 低频和 trap-like 鼓组明显时勾选。
+      uncertainty_policy: 纯规则只给候选，人工最终确认。
+    - name: jersey club influence
+      group: Style
+      description_zh: 带有 Jersey club 弹跳切分律动的影响。
+      positive_cues: [较快 BPM, 切分 kick, 高起音密度, 弹跳感]
+      negative_cues: [直给四拍, 慢板, 无切分律动]
+      audio_evidence: [tempo.bpm, onset density, beat pattern proxy]
+      annotation_guideline_zh: 听到明显 Jersey club 弹跳律动时勾选。
+      uncertainty_policy: 仅规则检测时必须标注为候选。
+  Mood:
+    - name: bright
+      group: Mood
+      description_zh: 明亮、清爽、开阔的情绪色彩。
+      positive_cues: [高频亮, 大调倾向, 中高 BPM]
+      negative_cues: [频谱暗, 低频压迫, 慢速阴郁]
+      audio_evidence: [centroid, high band, key confidence]
+      annotation_guideline_zh: 整体音色明亮且情绪上扬时勾选。
+      uncertainty_policy: 调性估计不稳定时不要只靠 key 判断。
+    - name: cute
+      group: Mood
+      description_zh: 可爱、轻盈、甜美的概念。
+      positive_cues: [明亮音色, 轻快速度, 低频不重]
+      negative_cues: [dark/confident 强概念, 重 bass]
+      audio_evidence: [high ratio, low ratio, tempo]
+      annotation_guideline_zh: 明确有 cute concept 听感时勾选。
+      uncertainty_policy: 需要人工结合听感确认。
+    - name: energetic
+      group: Mood
+      description_zh: 高能、推动感强。
+      positive_cues: [高 BPM, 高 onset, 高 RMS, 副歌抬升]
+      negative_cues: [低速, 低能量, 稀疏伴奏]
+      audio_evidence: [tempo, onset_density, rms_p90, chorus_energy_lift]
+      annotation_guideline_zh: 歌曲整体有明显动能和表演推动时勾选。
+      uncertainty_policy: 只有局部高能时作为候选。
+    - name: confident
+      group: Mood
+      description_zh: 自信、强势、舞台中心感。
+      positive_cues: [低频稳, 鼓组强, 副歌冲击, dark/hip-hop 倾向]
+      negative_cues: [轻柔甜美, ballad 主导]
+      audio_evidence: [low ratio, heavy drums, chorus/drop]
+      annotation_guideline_zh: 编曲呈现强姿态和压迫感时勾选。
+      uncertainty_policy: 需避免仅靠响度判断。
+    - name: dreamy
+      group: Mood
+      description_zh: 梦幻、漂浮、空间感强。
+      positive_cues: [高频空气感, onset 较少, pad/混响感]
+      negative_cues: [干燥强鼓点, dense rap]
+      audio_evidence: [high band, onset density, spectral centroid]
+      annotation_guideline_zh: 听感有漂浮/空间/柔和色彩时勾选。
+      uncertainty_policy: 无听感确认时作为候选。
+    - name: sentimental
+      group: Mood
+      description_zh: 抒情、感伤、情绪内收。
+      positive_cues: [中慢速, 人声突出, 动态铺陈]
+      negative_cues: [持续高能 dance break]
+      audio_evidence: [tempo, vocal share, dynamic range]
+      annotation_guideline_zh: 旋律和人声情绪明显偏感伤时勾选。
+      uncertainty_policy: 纯音频难判断歌词情绪时保守。
+    - name: dark
+      group: Mood
+      description_zh: 暗色、压迫、冷感。
+      positive_cues: [低频重, 频谱偏暗, 小调倾向]
+      negative_cues: [明亮甜美, 高频清爽]
+      audio_evidence: [low ratio, centroid, key]
+      annotation_guideline_zh: 整体听感偏暗或强概念时勾选。
+      uncertainty_policy: key 置信度低时不单独采信。
+    - name: playful
+      group: Mood
+      description_zh: 俏皮、有跳跃感或趣味变化。
+      positive_cues: [切分节奏, 音色变化多, hook 短促]
+      negative_cues: [长线抒情, 稳态 pad]
+      audio_evidence: [onset density, zcr, segment contrast]
+      annotation_guideline_zh: 编曲/人声节奏有玩味变化时勾选。
+      uncertainty_policy: 需要人工听感确认。
+    - name: dramatic
+      group: Mood
+      description_zh: 戏剧化、强对比、张力明显。
+      positive_cues: [动态范围大, 段落对比强, bridge contrast]
+      negative_cues: [全曲平稳无明显起伏]
+      audio_evidence: [dynamic range, energy contrast, segment labels]
+      annotation_guideline_zh: 段落收放或情绪转折明显时勾选。
+      uncertainty_policy: 小幅动态变化不应过度解读。
+    - name: euphoric
+      group: Mood
+      description_zh: 高扬、释放、兴奋感。
+      positive_cues: [副歌高能, 高频明亮, 重复 hook]
+      negative_cues: [低能、阴郁、克制]
+      audio_evidence: [chorus energy lift, high ratio, repetition]
+      annotation_guideline_zh: 副歌/高潮明显带来释放感时勾选。
+      uncertainty_policy: 与 energetic 可共存但不是同义。
+  Arrangement:
+    - name: heavy drums
+      group: Arrangement
+      description_zh: 鼓组能量或起音密度突出。
+      positive_cues: [drums share 高, onset density 高, 重拍明显]
+      negative_cues: [鼓组稀疏, acoustic ballad]
+      audio_evidence: [drums.relative_rms_share, onset_density]
+      annotation_guideline_zh: 鼓组明显推动律动时勾选。
+      uncertainty_policy: 无 stems 时仅作为规则候选。
+    - name: four-on-the-floor
+      group: Arrangement
+      description_zh: 稳定四拍重拍舞曲律动。
+      positive_cues: [稳定 beat density, dance-pop, house/disco groove]
+      negative_cues: [切分 trap, ballad, 断裂式节奏]
+      audio_evidence: [beat_times, tempo, onset regularity]
+      annotation_guideline_zh: 听到每拍 kick 或稳定四拍推进时勾选。
+      uncertainty_policy: 当前 beat 规则只能给弱证据。
+    - name: syncopated groove
+      group: Arrangement
+      description_zh: 切分、跳跃或反拍律动明显。
+      positive_cues: [onset 密集且不均匀, jersey/trap 倾向]
+      negative_cues: [完全平直四拍]
+      audio_evidence: [onset envelope, zcr, tempo]
+      annotation_guideline_zh: 节奏重心有明显错位/弹跳时勾选。
+      uncertainty_policy: 需要人工听感确认。
+    - name: synth bass
+      group: Arrangement
+      description_zh: 合成器贝斯或电子低频线条明显。
+      positive_cues: [低频集中, bass share 高, 电子音色]
+      negative_cues: [低频弱, 原声 bass 不突出]
+      audio_evidence: [bass.low_energy_ratio_mean, low_20_250]
+      annotation_guideline_zh: 听到低频 synth/bass hook 或持续 drive 时勾选。
+      uncertainty_policy: 无 stems 时不要断言具体乐器。
+    - name: sub-bass drive
+      group: Arrangement
+      description_zh: 低频推进是主要冲击来源。
+      positive_cues: [低频占比高, chorus/drop 低频增强]
+      negative_cues: [薄低频, 高频/人声主导]
+      audio_evidence: [low_20_250, bass relative share]
+      annotation_guideline_zh: 低频重量明显驱动段落时勾选。
+      uncertainty_policy: 设备播放低频不足时人工可保守。
+    - name: vocal layering
+      group: Arrangement
+      description_zh: 人声叠唱、和声或 ad-lib 增厚。
+      positive_cues: [chorus vocal share 增加, high vocal energy, 副歌厚度提升]
+      negative_cues: [全曲单薄 solo vocal, 无明显叠唱]
+      audio_evidence: [vocals.relative_rms_share, chorus segments, dynamic contrast]
+      annotation_guideline_zh: 副歌或高潮明显有人声层次加厚时勾选。
+      uncertainty_policy: 无 stems 时以人工听感为准。
+    - name: chant hook
+      group: Arrangement
+      description_zh: 口号式、短句重复、适合跟唱的 hook。
+      positive_cues: [短促重复, 人声 onset 密集, chorus/post-chorus 重复]
+      negative_cues: [长旋律线, 无重复口号]
+      audio_evidence: [repetition_score, vocal onset proxy]
+      annotation_guideline_zh: 听到 chant/口号式 hook 时勾选。
+      uncertainty_policy: 纯音频不能可靠识别歌词，需人工确认。
+    - name: rap section
+      group: Arrangement
+      description_zh: rap 或 spoken rhythm 段落。
+      positive_cues: [人声起音密集, verse 低能但节奏突出, hip-hop pop]
+      negative_cues: [全旋律演唱]
+      audio_evidence: [vocal onset density, verse segment]
+      annotation_guideline_zh: 明确存在 rap flow 或 spoken rhythm 时勾选。
+      uncertainty_policy: 规则输出只能作为候选。
+    - name: pre-chorus buildup
+      group: Arrangement
+      description_zh: 副歌前逐步蓄力。
+      positive_cues: [进入 chorus 前 RMS/亮度/人声上升]
+      negative_cues: [副歌前无明显变化]
+      audio_evidence: [energy_delta, spectral_brightness, segment order]
+      annotation_guideline_zh: pre-chorus 明显为副歌做张力铺垫时勾选。
+      uncertainty_policy: 边界不清时标为不确定。
+    - name: chorus energy lift
+      group: Arrangement
+      description_zh: 副歌/drop 相比前段能量抬升。
+      positive_cues: [RMS 上升, 鼓/低频增强, onset 增加]
+      negative_cues: [副歌能量不升反降]
+      audio_evidence: [segment.energy_delta, rms, low ratio]
+      annotation_guideline_zh: 副歌候选段比前段明显更满更响时勾选。
+      uncertainty_policy: 只根据整曲响度不够，需段落对比。
+    - name: drop chorus
+      group: Arrangement
+      description_zh: 副歌以 drop 或器乐 hook 释放。
+      positive_cues: [chorus/drop label, 低频和鼓组增强, 人声减少或 hook 化]
+      negative_cues: [传统旋律副歌且无 drop]
+      audio_evidence: [chorus/drop segments, bass/drums share]
+      annotation_guideline_zh: 副歌明显以 drop/器乐动机形成高潮时勾选。
+      uncertainty_policy: 无 stems 时避免断言人声减少。
+    - name: instrumental post-chorus
+      group: Arrangement
+      description_zh: 副歌后有器乐 hook 或高能伴奏段。
+      positive_cues: [chorus 后高能, vocal 减少, other/drums/bass 保持]
+      negative_cues: [副歌后直接主歌或安静过门]
+      audio_evidence: [post-chorus segment, stem shares]
+      annotation_guideline_zh: 副歌后器乐成为 hook 中心时勾选。
+      uncertainty_policy: 需要段落和人工听感共同确认。
+    - name: dance break
+      group: Arrangement
+      description_zh: 突出舞蹈展示的器乐/节奏段。
+      positive_cues: [人声占比低, 鼓/贝斯/伴奏高, onset 高]
+      negative_cues: [人声旋律持续主导]
+      audio_evidence: [dance break segment, vocal dominance, drums dominance]
+      annotation_guideline_zh: 明确有舞蹈展示中心段落时勾选。
+      uncertainty_policy: 无 stems 时只作为候选。
+    - name: bridge contrast
+      group: Arrangement
+      description_zh: bridge 与前后段形成明显对比。
+      positive_cues: [中后段能量/音色/和声变化, repetition 低]
+      negative_cues: [全曲重复无桥段变化]
+      audio_evidence: [bridge segment, energy contrast, chroma stability]
+      annotation_guideline_zh: 中后段明显换氛围或减法编曲时勾选。
+      uncertainty_policy: 段落边界不稳时保守。
+    - name: acoustic/piano intro
+      group: Arrangement
+      description_zh: 开头由钢琴/原声或较少伴奏建立氛围。
+      positive_cues: [intro 低能, onset 低, 高频/中频温和]
+      negative_cues: [开头即完整电子鼓和低频]
+      audio_evidence: [intro segment, onset density, energy_mean]
+      annotation_guideline_zh: intro 明显用钢琴/原声/稀疏伴奏时勾选。
+      uncertainty_policy: 需要人工听感确认乐器。
+  Structure:
+    - name: clear intro
+      group: Structure
+      description_zh: 开头有可辨识引入段。
+      positive_cues: [首段 intro, 低能量, 段落边界清晰]
+      negative_cues: [直接进入主歌/副歌, 无引入]
+      audio_evidence: [segments.label, boundary_strength]
+      annotation_guideline_zh: 开头承担引入氛围功能时勾选。
+      uncertainty_policy: 短 intro 也可标不确定。
+    - name: verse-prechorus-chorus structure
+      group: Structure
+      description_zh: 主歌-副歌前-副歌结构清晰。
+      positive_cues: [verse, pre-chorus, chorus/drop 依次出现]
+      negative_cues: [结构循环不清, 段落全 unknown]
+      audio_evidence: [structure_summary]
+      annotation_guideline_zh: 三段结构清楚时勾选。
+      uncertainty_policy: 自动分段只作候选。
+    - name: strong pre-chorus
+      group: Structure
+      description_zh: 副歌前蓄力段明显。
+      positive_cues: [pre-chorus label, energy/brightness 上升]
+      negative_cues: [副歌前无明显 build]
+      audio_evidence: [prechorus segment, energy_delta]
+      annotation_guideline_zh: pre-chorus 功能明确时勾选。
+      uncertainty_policy: 与 arrangement 的 buildup 可共存。
+    - name: repeated hook
+      group: Structure
+      description_zh: 有重复 hook 或副歌回归。
+      positive_cues: [repetition_score 高, 多个 chorus/drop]
+      negative_cues: [段落无重复]
+      audio_evidence: [repetition_score, chorus_candidates]
+      annotation_guideline_zh: hook 或副歌反复出现时勾选。
+      uncertainty_policy: 纯伴奏重复不一定是 hook。
+    - name: dance break section
+      group: Structure
+      description_zh: 结构中包含 dance break 段。
+      positive_cues: [dance break label, 高 onset, stem dominance]
+      negative_cues: [无明显器乐舞蹈段]
+      audio_evidence: [dance_break_candidates]
+      annotation_guideline_zh: 出现专门舞蹈展示段时勾选。
+      uncertainty_policy: 无 stems 时作为候选。
+    - name: bridge before final chorus
+      group: Structure
+      description_zh: 最后一轮副歌前有 bridge 对比。
+      positive_cues: [中后段 bridge, 后接 chorus/drop]
+      negative_cues: [无 bridge 或无最终副歌]
+      audio_evidence: [bridge segment, chorus after bridge]
+      annotation_guideline_zh: bridge 明显为最终副歌制造对比时勾选。
+      uncertainty_policy: 自动无法确认最终副歌时保守。
+    - name: outro/fade
+      group: Structure
+      description_zh: 尾声或渐弱收束。
+      positive_cues: [末段 outro, 能量下降, 重复收束]
+      negative_cues: [突然结束或末尾仍是副歌]
+      audio_evidence: [outro segment, energy_slope]
+      annotation_guideline_zh: 结尾承担收束功能时勾选。
+      uncertainty_policy: 短尾奏可标不确定。

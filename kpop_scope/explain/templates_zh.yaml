@@ -1,0 +1,6 @@
+# Reserved for future template-based report generation.
+# Current v1 uses Python report generation in report_generator.py.
+phrases:
+  tempo_fast: "速度较快，适合形成舞蹈律动。"
+  tempo_mid: "速度中等，兼顾律动和旋律表达。"
+  tempo_slow: "速度偏慢，情绪表达更依赖旋律、人声和和声。"

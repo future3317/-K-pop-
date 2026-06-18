@@ -1,0 +1,34 @@
+{
+  "audio_path": "examples/your_local_song.mp3",
+  "features": {
+    "duration_seconds": 203.4,
+    "tempo": {
+      "bpm": 124.0
+    },
+    "key": {
+      "key": "A minor",
+      "confidence": 0.62
+    },
+    "segments": {
+      "segments": [
+        {
+          "start": 0,
+          "end": 18,
+          "label_guess": "intro"
+        }
+      ]
+    }
+  },
+  "tag_result": {
+    "source": "acoustic_prior_classifier_v2",
+    "tags": [
+      {
+        "tag": "dance-pop",
+        "score": 0.82
+      }
+    ]
+  },
+  "explanations": {
+    "summary": "这首歌的主要标签倾向为 dance-pop..."
+  }
+}

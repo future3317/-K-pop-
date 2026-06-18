@@ -1,0 +1,730 @@
+% !TeX program = xelatex
+\documentclass[UTF8,zihao=-4]{ctexart}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[numbers,sort&compress]{natbib}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!55!black,
+    citecolor=blue!55!black,
+    urlcolor=blue!55!black
+}
+
+\setCJKmainfont{SimSun}
+\setCJKsansfont{Microsoft YaHei}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}
+
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{15pt}
+\lhead{音频信息处理大作业}
+\rhead{KPopScope}
+\cfoot{\thepage}
+
+\definecolor{codegray}{RGB}{245,245,245}
+\definecolor{notered}{RGB}{180,40,40}
+\definecolor{deepblue}{RGB}{35,78,135}
+\definecolor{deepgreen}{RGB}{36,120,72}
+
+\lstdefinestyle{code}{
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!20},
+  columns=fullflexible
+}
+\lstset{style=code}
+
+\newcommand{\method}{KPopScope}
+\newcommand{\todo}[1]{#1}
+\newcommand{\note}[1]{\textcolor{deepblue}{#1}}
+
+\title{\textbf{面向 K-pop 的可解释音乐信息检索与自动赏析系统}\\
+\large 基于预训练音乐表征、声部级特征融合与结构化证据生成}
+\author{作者：课程项目组 \\
+课程：音频信息处理 \\
+指导教师：课程教师}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+随着音乐流媒体和短视频平台的发展，用户对音乐内容理解的需求已经从简单的歌曲检索和风格分类，扩展到“为什么这首歌听起来有冲击力”“副歌如何完成情绪释放”“鼓、贝斯、人声和合成器在编曲中分别起到什么作用”等更细粒度的音乐赏析问题。传统音乐信息检索（Music Information Retrieval, MIR）方法通常关注风格、情绪、乐器、节拍、调性等标签预测任务，近年来的音乐预训练模型也显著提升了通用音乐理解能力。然而，对于 K-pop 这类高度工业化、段落化和舞台表演导向的流行音乐，仅输出 genre 或 mood 标签难以满足用户对编曲结构和听感原因的解释需求。
+
+本文提出 \method{}，一个面向 K-pop 的可解释音乐信息检索与自动赏析系统。系统以本地音频文件为输入，首先提取节拍、响度、音色、调性、起音密度等声学特征；然后利用预训练音乐表征模型 MERT 提取整曲与声部级 embedding，并借助源分离模型将混合音频分解为 vocals、drums、bass 和 other 四类声部；进一步设计 K-pop 特化标签体系，覆盖风格、情绪、编曲手法和段落结构；最后通过结构感知的证据驱动生成模块，将模型预测、声部贡献和段落边界转化为可读的中文音乐赏析报告。与仅输出标签的 baseline 相比，本文方法强调每条赏析结论均可追溯到 BPM、onset density、loudness change、stem energy 或 segment boundary 等音频证据，从而提升系统输出的可解释性和实用性。
+
+实验部分设计了通用音乐标签迁移实验、低资源 K-pop 微调实验、stem-aware 消融实验以及人工报告评测。由于课程项目阶段样本数量有限，本文将 13 首本地 K-pop 音频作为 demo 与 case study，用于验证系统链路和解释效果；具体指标数值需在代码完成后由实际运行结果替换。实验设计表明，\method{} 可以作为低资源场景下 K-pop 自动赏析任务的可复现框架，并为后续扩展到更大规模合法数据集提供基础。
+\end{abstract}
+
+\noindent\textbf{关键词：} 音乐信息检索；K-pop；自动音乐标注；MERT；源分离；音乐结构分析；可解释人工智能；音乐赏析生成
+
+\tableofcontents
+\newpage
+
+\section{研究背景}
+
+音乐信息检索（Music Information Retrieval, MIR）旨在从音乐音频信号中提取可用于检索、分类、推荐和理解的结构化信息，包括节拍、速度、调性、和弦、旋律、乐器、风格、情绪和段落结构等。随着深度学习方法的发展，MIR 已经从早期基于手工声学特征的系统，逐步发展到基于卷积神经网络、循环神经网络、Transformer 以及大规模自监督预训练模型的音乐理解框架。例如，MERT 通过大规模自监督训练学习音乐音频表征，并在 music tagging、genre、instrument、key 等多个音乐理解任务上取得良好表现\cite{mert2023}。
+
+与此同时，音乐用户的需求也发生了变化。普通听众并不只关心一首歌属于 pop、rock 或 electronic，也希望理解“副歌为什么更燃”“pre-chorus 为什么有蓄力感”“dance break 为什么适合舞台表演”“人声叠唱和低频推进如何塑造情绪”等更接近音乐赏析的问题。尤其在 K-pop 语境中，歌曲通常具有明确的段落结构、强烈的制作概念、复杂的人声层次和舞蹈/舞台表演导向的编曲设计。因此，单纯的风格分类或情绪识别难以充分描述 K-pop 音乐的听感特征。
+
+K-pop 相关数据和任务已有一定基础。MIREX 曾设置 Audio K-POP Genre Classification 任务，将歌曲划分为 Ballad、Dance、Folk、Hip-hop、R\&B、Rock、Trot 等类别\cite{mirex2020kpop}。Melon Playlist Dataset 则提供了来自韩国流媒体平台 Melon 的大规模 mel-spectrogram、playlist 和 tag 数据，可用于韩国音乐生态下的标签学习和推荐研究\cite{ferraro2021melon}。然而，这些任务主要面向 genre classification、auto-tagging 或 playlist continuation，较少直接关注 K-pop 编曲结构、声部贡献和自然语言赏析。
+
+近年来，音乐 caption 与音乐问答也成为新的研究方向。MusicCaps 提供了由音乐人撰写的音乐片段描述\cite{musiccaps2023}；LP-MusicCaps 进一步利用大语言模型从大规模标签数据生成伪音乐描述，以缓解音乐文本数据稀缺问题\cite{doh2023lpmusiccaps}；MusiLingo 则通过将 MERT 与大语言模型连接，实现音乐 captioning 和 music-related query response\cite{deng2023musilingo}。这些工作说明“音频到自然语言描述”具有研究价值，但在课程项目和单卡 GPU 条件下，从零训练音乐语言模型成本较高。因此，本文选择一条更可控的路线：不追求端到端生成式大模型，而是构建一个由音频证据驱动的可解释赏析系统。
+
+\section{研究动机}
+
+本文的动机来自两个方面。
+
+第一，现有音乐自动标注系统通常输出高层语义标签，例如 dance-pop、female vocal、energetic、bright 等。这类标签对于检索和推荐是有用的，但解释性不足。用户真正想知道的往往不是“这首歌被判定为 energetic”，而是“系统为什么认为它 energetic”。对于 K-pop 音乐而言，这种原因可能来自较快 BPM、稳定四拍律动、高鼓点密度、副歌段落响度抬升、低频能量增强或人声叠唱变厚。因此，需要一种能够将标签预测与音频证据关联起来的方法。
+
+第二，K-pop 的音乐组织方式具有明显的结构化和声部化特点。许多歌曲包含 intro、verse、pre-chorus、chorus/drop、post-chorus、dance break、bridge 和 outro 等段落，这些段落在能量、节奏密度、人声占比和低频驱动上存在明显变化。若仅对混合音频进行整曲级别分析，就难以解释“鼓组何时推动律动”“贝斯何时增强冲击力”“人声何时成为情绪中心”等编曲问题。源分离方法能够将混合音乐拆分为 vocals、drums、bass 和 other 等声部，为声部级分析提供了可能\cite{defossez2019demucs,demucsrepo}。audioLIME 等工作也表明，基于源分离的解释比仅在频谱图上做扰动更具有音乐意义和可听性\cite{haunschmid2020audiolime}。
+
+基于以上动机，本文希望回答如下研究问题：
+
+\begin{enumerate}[label=RQ\arabic*.,leftmargin=2.5em]
+    \item 在低资源 K-pop 场景中，预训练音乐表征能否支持风格、情绪和编曲标签识别？
+    \item 与仅使用整曲混合音频相比，引入 vocals、drums、bass、other 等声部级特征是否能提升标签识别的可解释性？
+    \item 基于段落结构和音频证据生成的中文赏析报告，是否比 tag-only baseline 更准确、更有信息量、更体现 K-pop 专属性？
+\end{enumerate}
+
+\section{本文贡献}
+
+本文的主要贡献如下：
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{提出面向 K-pop 编曲赏析的多层标签体系。} 不同于传统 genre/mood tagging 仅关注风格和情绪，本文将标签扩展到 style、mood、arrangement 和 structure 四组，包含 pre-chorus buildup、chorus energy lift、drop chorus、instrumental post-chorus、dance break、vocal layering、chant hook 等 K-pop 赏析中常见的编曲与结构概念。
+
+    \item \textbf{设计声部感知的 K-pop 标签识别框架。} 本文将整曲 MERT 表征、声部级 MERT 表征、传统声学特征以及段落结构特征进行融合，构建多标签分类器。与 full-mix only baseline 相比，该框架不仅输出标签概率，还能通过 stem contribution 分析估计 vocals、drums、bass 和 other 对不同标签的贡献。
+
+    \item \textbf{提出结构感知的证据驱动赏析生成方法。} 系统将 BPM、onset density、loudness change、spectral brightness、stem energy、segment boundary、repetition score 等音频证据组织为结构化 evidence graph，并基于规则模板生成中文赏析报告。报告中的结论尽量绑定可追溯证据，避免无依据的泛化描述。
+
+    \item \textbf{构建可复现的低资源实验流程。} 项目提供本地音频 manifest 构建、批量分析、伪标签生成、人工标注辅助、tiny classifier 训练、消融实验和人工报告评测脚本。该流程既可服务课程大作业，也便于后续扩展到 MTG-Jamendo\cite{bogdanov2019mtgjamendo}、Melon Playlist Dataset\cite{ferraro2021melon} 等合法公开数据集。
+\end{enumerate}
+
+\section{相关工作}
+
+\subsection{音乐自动标注与预训练音乐表征}
+
+音乐自动标注通常将音频映射到 genre、instrument、mood/theme 等标签集合。MTG-Jamendo Dataset 包含超过 55,000 首 Creative Commons 授权音乐，标签覆盖 genre、instrument 和 mood/theme，是常用的开放音乐标注数据集\cite{bogdanov2019mtgjamendo}。近年来，自监督预训练模型被引入音乐理解任务。MERT 使用音乐相关 teacher model 生成伪目标，并通过 masked language modelling 风格预训练学习音频表征，在多项音乐理解任务上表现良好\cite{mert2023}。本文将 MERT 作为特征提取器，而不是从零训练大型模型，以适应单张 RTX 4060 Ti 的计算条件。
+
+\subsection{K-pop 数据与任务}
+
+K-pop 作为一种具有全球影响力的流行音乐形态，在数据集和任务设计上仍相对稀缺。MIREX Audio K-POP Genre Classification 任务包含 1894 首歌曲，并将其划分为七类 K-pop genre\cite{mirex2020kpop}。Melon Playlist Dataset 则提供韩国主流流媒体平台上的大规模 playlist、tag 与 mel-spectrogram 表示，适合研究韩国音乐消费语境下的推荐与标注问题\cite{ferraro2021melon}。与这些工作不同，本文关注的是 K-pop 编曲赏析：不仅判断歌曲属于何种风格，还尝试解释副歌、dance break、人声叠唱和低频推进等制作手法如何形成听感。
+
+\subsection{音乐结构分析}
+
+音乐结构分析（Music Structure Analysis, MSA）旨在识别音乐片段边界，并可能进一步对片段进行标签化。传统方法常利用 self-similarity matrix、novelty curve、homogeneity、repetition 和 regularity 等线索；近期工作也将深度学习和监督损失引入边界检测\cite{nieto2020msa,peeters2023msa}。本文不追求通用 MSA 的 SOTA，而是面向 K-pop 赏析需求设计结构化段落识别，将段落标签限定为 intro、verse、pre-chorus、chorus/drop、post-chorus、dance break、bridge、outro 等更适合流行音乐分析的类别。
+
+\subsection{音乐源分离与可解释 MIR}
+
+源分离模型可以将混合音乐拆分为不同声部。Demucs 在 waveform domain 进行音乐源分离，并可将歌曲分离为 drums、bass、vocals 和其他声部\cite{defossez2019demucs,demucsrepo}。在可解释 MIR 方面，audioLIME 将 LIME 的扰动单元从不可听的频谱区域改为由源分离得到的音频组件，使解释结果更符合音乐感知\cite{haunschmid2020audiolime}。本文借鉴这一思想，将声部视为解释单元，并进一步将声部级特征用于 K-pop 标签识别和赏析生成。
+
+\subsection{音乐 Caption 与音乐问答}
+
+MusicCaps 提供音乐片段的 aspect list 与自然语言描述\cite{musiccaps2023}。LP-MusicCaps 利用大语言模型从标签生成伪 caption，以缓解音乐 caption 数据不足\cite{doh2023lpmusiccaps}。MusiLingo 则将 MERT 与 LLM 连接，实现音乐 caption 和问答\cite{deng2023musilingo}。这些工作证明了音乐到文本方向的潜力。本文与其区别在于：不直接训练大规模音乐语言模型，而是以音频证据为基础生成可解释赏析文本，更适合低资源课程项目和本地开源工具场景。
+
+\section{任务定义}
+
+给定一首本地音乐音频 $x$，系统目标是输出结构化分析结果 $Y$ 与自然语言赏析报告 $R$。结构化结果包括：
+
+\begin{equation}
+Y = \{T_{style}, T_{mood}, T_{arr}, T_{struct}, B, K, S, C\},
+\end{equation}
+
+其中 $T_{style}$、$T_{mood}$、$T_{arr}$、$T_{struct}$ 分别表示风格、情绪、编曲和结构标签；$B$ 表示 BPM 与 beat/downbeat 信息；$K$ 表示调性与 chroma 信息；$S$ 表示段落边界和段落标签；$C$ 表示声部贡献与解释证据。
+
+本文采用多标签设定。对于标签集合 $\mathcal{T}=\{t_1,t_2,\dots,t_M\}$，模型输出每个标签的概率：
+
+\begin{equation}
+\hat{\bm{y}} = \sigma(f_\theta(x)), \quad \hat{y}_i \in [0,1],
+\end{equation}
+
+其中 $\sigma$ 为 sigmoid 函数，$f_\theta$ 为声部感知融合分类器。最终报告 $R$ 由模板化生成函数 $g(\cdot)$ 生成：
+
+\begin{equation}
+R = g(Y, E),
+\end{equation}
+
+其中 $E$ 为 evidence graph，记录每条结论所依赖的音频证据。
+
+\section{算法设计}
+
+\subsection{系统总体架构}
+
+图\ref{fig:pipeline} 展示了 \method{} 的总体流程。系统以 FLAC/MP3/WAV 等本地音频为输入，经过预处理、基础声学特征提取、MERT 表征提取、源分离、段落结构分析、标签预测、声部贡献估计和报告生成，最终输出 JSON、Markdown/HTML 报告和可视化图表。
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=1.2cm, auto, >=latex, thick]
+    \tikzstyle{block}=[rectangle, draw=deepblue, fill=blue!5, rounded corners, align=center, minimum height=0.8cm, minimum width=2.7cm]
+    \tikzstyle{smallblock}=[rectangle, draw=deepgreen, fill=green!5, rounded corners, align=center, minimum height=0.8cm, minimum width=2.5cm]
+    \node[block] (input) {本地音频\\FLAC/MP3/WAV};
+    \node[block, right=of input] (pre) {预处理\\重采样/归一化};
+    \node[block, right=of pre] (feat) {基础特征\\BPM/Chroma/RMS/Onset};
+    \node[smallblock, below=of feat] (mert) {MERT\\整曲表征};
+    \node[smallblock, above=of feat] (stem) {Demucs\\声部分离};
+    \node[smallblock, right=of stem] (stemfeat) {Stem 特征\\Vocals/Drums/Bass/Other};
+    \node[block, right=of feat] (seg) {结构分析\\段落边界/标签};
+    \node[block, right=of seg] (clf) {融合分类器\\K-pop 多标签};
+    \node[block, right=of clf] (report) {证据驱动\\中文赏析报告};
+    \draw[->] (input) -- (pre);
+    \draw[->] (pre) -- (feat);
+    \draw[->] (feat) -- (seg);
+    \draw[->] (seg) -- (clf);
+    \draw[->] (clf) -- (report);
+    \draw[->] (pre) |- (mert);
+    \draw[->] (mert) -| (clf);
+    \draw[->] (pre) |- (stem);
+    \draw[->] (stem) -- (stemfeat);
+    \draw[->] (stemfeat) |- (clf);
+    \draw[->] (stemfeat) -| (report);
+    \draw[->] (seg) |- (report);
+\end{tikzpicture}%
+}
+\caption{\method{} 系统总体架构。}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{音频预处理与基础特征提取}
+
+音频首先被转为单声道并重采样到统一采样率 $sr$。设时域波形为 $x[n]$，系统计算短时傅里叶变换（STFT）与 mel spectrogram：
+
+\begin{equation}
+X(m,k)=\sum_n x[n]w[n-mH]e^{-j2\pi kn/N},
+\end{equation}
+
+其中 $w$ 为窗函数，$H$ 为 hop size。基于 STFT 与 mel spectrogram，系统提取如下特征：
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{节奏特征：} onset strength、beat positions、tempo/BPM、onset density；
+    \item \textbf{能量特征：} frame-level RMS、segment loudness、energy slope、chorus energy lift；
+    \item \textbf{音色特征：} spectral centroid、bandwidth、rolloff、zero-crossing rate；
+    \item \textbf{调性特征：} chroma、key estimation、chroma stability；
+    \item \textbf{结构特征：} novelty curve、self-similarity、repetition score、boundary strength。
+\end{itemize}
+
+这些特征既用于规则 fallback，也用于融合分类器和赏析报告中的证据描述。
+
+\subsection{MERT 音乐表征提取}
+
+为了避免在小数据上从零训练深度模型，本文使用 MERT 作为冻结的音乐特征提取器。给定音频 $x$，MERT 输出帧级 hidden states：
+
+\begin{equation}
+\bm{H}^{mix} = \mathrm{MERT}(x) \in \mathbb{R}^{T \times d}.
+\end{equation}
+
+本文采用 mean pooling 与 attention pooling 两种方式得到整曲 embedding：
+
+\begin{equation}
+\bm{z}^{mix}=\mathrm{Pool}(\bm{H}^{mix}) \in \mathbb{R}^{d}.
+\end{equation}
+
+当显存或依赖不足时，系统退化为 acoustic-only 模式，仅使用传统声学特征进行推理，并在报告中明确说明该结果来自声学先验而非训练好的 K-pop 模型。
+
+\subsection{声部分离与 Stem 特征}
+
+为了分析不同编曲声部的贡献，系统使用 Demucs 将混合音频分离为四类 stem：
+
+\begin{equation}
+\{x^{voc},x^{drum},x^{bass},x^{other}\}=\mathrm{Demucs}(x).
+\end{equation}
+
+对于每个 stem $x^s$，系统分别提取声学特征 $\bm{a}^s$ 与 MERT 表征 $\bm{z}^s$。其中 vocals stem 用于判断人声主导、vocal layering、bridge vocal focus；drums stem 用于判断 heavy drums、four-on-the-floor、dance break；bass stem 用于判断 sub-bass drive、drop impact；other stem 用于判断 synth brightness、instrumental post-chorus 和伴奏铺底。
+
+\subsection{K-pop 特化标签体系}
+
+本文设计四组标签，如表\ref{tab:taxonomy} 所示。标签体系不仅服务模型训练，也服务人工标注辅助和报告生成。
+
+\begin{table}[H]
+\centering
+\caption{K-pop 特化标签体系示例。}
+\label{tab:taxonomy}
+\small
+\begin{tabular}{p{0.16\linewidth}p{0.38\linewidth}p{0.36\linewidth}}
+\toprule
+组别 & 标签示例 & 主要音频证据 \\
+\midrule
+Style & dance-pop, electropop, hip-hop pop, ballad & BPM, timbre, rhythm, spectral brightness \\
+Mood & bright, energetic, dark, dreamy, sentimental & loudness, centroid, harmony, tempo \\
+Arrangement & vocal layering, chant hook, drop chorus, dance break & stem energy, onset density, segment contrast \\
+Structure & pre-chorus buildup, chorus energy lift, bridge contrast & boundary strength, RMS delta, repetition score \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+每个标签在配置文件中包含中文定义、正例线索、负例线索、可用音频证据和不确定性策略。例如，\textit{chorus energy lift} 被定义为“副歌或 drop 段相较前一段存在明显能量、鼓组、低频或高频提升”；若系统检测到某段 RMS 相比前一段提升、drums onset density 增加且 repetition score 较高，则提高该标签置信度。
+
+\subsection{声部感知融合分类器}
+
+本文的核心分类器采用多源特征融合结构。设整曲 MERT 表征为 $\bm{z}^{mix}$，四个 stem 表征为 $\bm{z}^{voc},\bm{z}^{drum},\bm{z}^{bass},\bm{z}^{other}$，整曲和声部声学特征为 $\bm{a}$，段落结构特征为 $\bm{u}$。融合向量定义为：
+
+\begin{equation}
+\bm{h}=\left[\bm{z}^{mix}; \bm{z}^{voc}; \bm{z}^{drum}; \bm{z}^{bass}; \bm{z}^{other}; \bm{a}; \bm{u}\right].
+\end{equation}
+
+分类器采用轻量 MLP：
+
+\begin{equation}
+\hat{\bm{y}}=\sigma\left(\bm{W}_2\phi(\bm{W}_1\bm{h}+\bm{b}_1)+\bm{b}_2\right),
+\end{equation}
+
+其中 $\phi$ 为 ReLU 或 GELU 激活函数。训练目标为多标签二元交叉熵：
+
+\begin{equation}
+\mathcal{L}_{BCE}=-\sum_{i=1}^{M}\left[y_i\log \hat{y}_i+(1-y_i)\log(1-\hat{y}_i)\right].
+\end{equation}
+
+在低资源场景中，MERT 与 Demucs 均冻结，仅训练分类头，以降低显存和数据需求。
+
+\subsection{段落结构分析}
+
+K-pop 歌曲通常有较明确的段落推进。系统先在 beat/bar 网格上聚合 frame-level 特征，再计算 novelty curve：
+
+\begin{equation}
+N(t)=\alpha \Delta \mathrm{RMS}(t)+\beta \Delta \mathrm{Onset}(t)+\gamma \Delta \mathrm{Chroma}(t)+\eta \Delta \mathrm{MFCC}(t),
+\end{equation}
+
+其中 $\Delta$ 表示相邻窗口差异。边界候选由 novelty peak、能量突变和重复结构共同决定。每个 segment $s_i=[\tau_i,\tau_{i+1}]$ 被赋予如下属性：
+
+\begin{equation}
+q_i=\{\mathrm{duration}, \mathrm{energy}, \mathrm{onset\_density}, \mathrm{brightness}, \mathrm{repetition}, \mathrm{stem\_dominance}\}.
+\end{equation}
+
+段落标签由规则分类器给出。规则示例如下：
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{intro：} 位于开头，能量较低，鼓组密度较低；
+    \item \textbf{pre-chorus：} 位于 chorus/drop 前，能量或高频亮度持续上升；
+    \item \textbf{chorus/drop：} 能量、鼓组密度、低频占比或重复性较高；
+    \item \textbf{post-chorus：} chorus 后人声减少但伴奏和鼓/贝斯仍保持高能量；
+    \item \textbf{dance break：} 人声占比低，drums/bass/other 占比高，onset density 高；
+    \item \textbf{bridge：} 中后段，与前后段在能量或和声色彩上形成对比。
+\end{itemize}
+
+若证据不足，系统输出 unknown 而非强行贴标签。
+
+\subsection{Stem Contribution 解释}
+
+为了估计不同声部对标签预测的影响，本文实现两种贡献计算方式。若分类器可用，使用 perturbation-style contribution：
+
+\begin{equation}
+C_{t,s}=p_t(\bm{h})-p_t(\bm{h}_{\setminus s}),
+\end{equation}
+
+其中 $p_t$ 表示标签 $t$ 的预测概率，$\bm{h}_{\setminus s}$ 表示移除或置零 stem $s$ 后的输入特征。若分类器不可用，则使用 acoustic evidence fallback，根据 stem RMS 占比、onset density、low-frequency ratio 和 segment-level change 生成规则贡献。
+
+\subsection{证据驱动赏析生成}
+
+报告生成模块将结构化结果转化为自然语言。与普通 caption 模型不同，本文要求每条关键描述绑定证据。例如：
+
+\begin{quote}
+17.1--34.2s 被识别为 chorus/drop 候选段。相较开头 intro，该段能量更高、节奏更活跃，并与其他高能段具有较高重复性，因此系统判断此处承担 hook 或副歌释放功能。
+\end{quote}
+
+系统支持两种报告模式：
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{tag-only baseline：} 仅使用风格、情绪和编曲标签生成简短报告；
+    \item \textbf{evidence-grounded：} 使用标签、段落、stem contribution 和音频证据生成完整报告。
+\end{enumerate}
+
+\subsection{算法流程}
+
+\begin{lstlisting}[caption={KPopScope 推理流程伪代码},label={alg:inference}]
+Input: audio file x
+Output: analysis JSON Y, appreciation report R
+
+1. x <- load_audio(x, target_sr)
+2. A_mix <- extract_acoustic_features(x)
+3. Z_mix <- MERT(x) if available else None
+4. if stems enabled:
+       stems <- Demucs(x)  # vocals, drums, bass, other
+       for each stem s:
+           A_s <- extract_acoustic_features(stem_s)
+           Z_s <- MERT(stem_s) if available else None
+   else:
+       stems <- None
+5. S <- segment_music(A_mix, A_stems)
+6. h <- fuse(Z_mix, Z_stems, A_mix, A_stems, S)
+7. tags <- classifier(h) if checkpoint available else acoustic_prior(A_mix, A_stems, S)
+8. contribution <- stem_contribution(tags, h, stems, S)
+9. evidence <- build_evidence_graph(tags, S, contribution, A_mix, A_stems)
+10. R <- generate_report(evidence, mode="evidence_grounded")
+11. Save Y, R, figures
+\end{lstlisting}
+
+\section{实验设计}
+
+\subsection{实验环境}
+
+本文实验预期在单张 NVIDIA RTX 4060 Ti GPU 上完成。MERT 与 Demucs 作为冻结模型使用，训练阶段仅更新轻量多标签分类头。基础功能在无 GPU 环境下也可运行，但会自动退化为 acoustic fallback。
+
+\begin{table}[H]
+\centering
+\caption{实验环境配置。}
+\begin{tabular}{ll}
+\toprule
+项目 & 配置 \\
+\midrule
+CPU & AMD Ryzen 7 7700 8-Core Processor \\
+GPU & NVIDIA RTX 4060 Ti \\
+内存 & 31.1 GB \\
+Python & 3.11.15 \\
+主要依赖 & PyTorch, librosa, transformers, demucs, streamlit \\
+操作系统 & Windows 11 / Windows 10.0.26200 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{数据集与样本}
+
+实验分为三类数据来源：
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{本地 K-pop demo 数据：} 13 首 TWICE 的 FLAC 音频，仅用于本地分析、case study 和小样本 sanity check。由于版权限制，音频不进入 Git 仓库，不公开分发。
+    \item \textbf{通用音乐标签数据：} MTG-Jamendo，用于通用 genre/mood/instrument 表征和标签迁移实验\cite{bogdanov2019mtgjamendo}。
+    \item \textbf{音乐描述与韩国音乐生态数据：} MusicCaps 可用于参考音乐 caption 表达风格\cite{musiccaps2023}；Melon Playlist Dataset 可用于后续韩国音乐标签学习\cite{ferraro2021melon}。
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{数据来源与用途。}
+\small
+\begin{tabular}{p{0.22\linewidth}p{0.18\linewidth}p{0.18\linewidth}p{0.32\linewidth}}
+\toprule
+数据来源 & 规模 & 是否公开音频 & 用途 \\
+\midrule
+本地 TWICE demo & 13 首 & 否 & demo、case study、人工弱标注 \\
+MTG-Jamendo & 55k+ 首 & 是，CC 授权 & 通用音乐标签训练/迁移 \\
+MusicCaps & 5521 段 & 元数据/引用 & 参考 caption 风格与评测设计 \\
+Melon Playlist Dataset & 649k tracks 表示 & mel-spectrogram & 韩国音乐生态标签/表征研究 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+基于本地 manifest，本文实际完成了 13 首 TWICE 音频的批量分析。伪标签分布中，高频标签包括 clear intro、confident、dance-pop、drop chorus、energetic、heavy drums、k-pop dance 和 outro/fade，均覆盖 13 首；electropop 与 pre-chorus buildup 覆盖 12 首；sub-bass drive 覆盖 11 首。该分布说明本地 demo 数据主要集中在女团舞曲和高能副歌结构，长尾标签如 trap-pop、retro pop、dramatic、dark 等样本很少，因此 macro-F1 更容易受到类别不均衡影响。
+
+\begin{table}[H]
+\centering
+\caption{本地 demo 伪标签分布摘要。}
+\small
+\begin{tabular}{lrlr}
+\toprule
+标签 & 数量 & 标签 & 数量 \\
+\midrule
+clear intro & 13 & confident & 13 \\
+dance-pop & 13 & drop chorus & 13 \\
+energetic & 13 & heavy drums & 13 \\
+k-pop dance & 13 & outro/fade & 13 \\
+electropop & 12 & pre-chorus buildup & 12 \\
+sub-bass drive & 11 & rap section & 8 \\
+r\&b pop & 7 & bright & 6 \\
+hip-hop pop & 6 & jersey club influence & 5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{对比方法}
+
+本文设置如下 baseline 与变体：
+
+\begin{table}[H]
+\centering
+\caption{对比方法设计。}
+\label{tab:baseline}
+\small
+\begin{tabular}{p{0.22\linewidth}p{0.34\linewidth}p{0.34\linewidth}}
+\toprule
+方法 & 输入特征 & 说明 \\
+\midrule
+Acoustic-only & BPM/RMS/Onset/Chroma/Spectral & 无深度模型的规则/声学先验 baseline \\
+MERT full-mix & 整曲 MERT embedding & 通用预训练音乐表征 baseline \\
+MERT + Acoustic & 整曲 MERT + 声学特征 & 检验传统特征补充作用 \\
+Stem Acoustic & 整曲声学 + stem 声学 & 检验声部级规则解释作用 \\
+Stem MERT & 整曲 MERT + stem MERT & 检验声部级深度表征作用 \\
+Fusion (Ours) & MERT + stem + acoustic + structure & 本文完整方法 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{评价指标}
+
+多标签分类使用 micro-F1、macro-F1、mAP 和 per-label F1。报告生成使用人工评测，维度包括 accuracy、evidence grounding、informativeness、K-pop specificity、fluency 和 overall preference。小样本实验不用于证明泛化能力，仅作为系统 sanity check 和 qualitative case study。
+
+\begin{equation}
+\mathrm{Micro\text{-}F1}=\frac{2\cdot \mathrm{Micro\text{-}Precision}\cdot \mathrm{Micro\text{-}Recall}}{\mathrm{Micro\text{-}Precision}+\mathrm{Micro\text{-}Recall}}.
+\end{equation}
+
+\subsection{实验命令}
+
+本项目预期使用如下命令复现实验流程：
+
+\begin{lstlisting}[caption={本地 K-pop demo 分析流程}]
+python scripts/build_manifest.py \
+  --input-dir twice \
+  --output data/local/twice_manifest.csv
+
+python scripts/batch_analyze.py \
+  --input-dir twice \
+  --output-dir outputs/twice \
+  --plots \
+  --both-report-modes \
+  --stems
+
+python scripts/bootstrap_pseudo_labels.py \
+  --manifest data/local/twice_manifest.csv \
+  --analysis-dir outputs/twice \
+  --output data/local/twice_pseudo_labels.csv
+
+streamlit run app/annotation_app.py -- \
+  --manifest data/local/twice_manifest.csv \
+  --pseudo-labels data/local/twice_pseudo_labels.csv \
+  --analysis-dir outputs/twice \
+  --output data/local/twice_human_labels.csv
+\end{lstlisting}
+
+\begin{lstlisting}[caption={MERT embedding 与 tiny classifier 训练流程}]
+python scripts/extract_embeddings.py \
+  --manifest data/local/twice_manifest.csv \
+  --output-dir data/local/embeddings \
+  --mert \
+  --device cuda
+
+python scripts/train_classifier.py \
+  --labels data/local/twice_human_labels.csv \
+  --embeddings data/local/embeddings \
+  --mode fusion \
+  --output checkpoints/kpop_classifier_tiny.pt
+
+python scripts/run_ablation.py \
+  --manifest data/local/twice_manifest.csv \
+  --labels data/local/twice_human_labels.csv \
+  --analysis-dir outputs/twice \
+  --output-dir outputs/research \
+  --loo
+\end{lstlisting}
+
+\section{实验结果}
+
+\subsection{多标签分类结果}
+
+表\ref{tab:classification} 为 13 首本地 TWICE demo 数据上的 tiny leave-one-out sanity check。该实验使用伪标签作为弱监督目标，样本量过小且标签由规则生成，因此结果只用于验证实验脚本与数据闭环可以运行，不能作为模型泛化能力证明。
+
+\begin{table}[H]
+\centering
+\caption{多标签分类消融结果（13 首本地 demo，tiny sanity check，不具统计显著性）。}
+\label{tab:classification}
+\small
+\begin{tabular}{p{0.24\linewidth}cccc}
+\toprule
+方法 & Micro-F1 & Macro-F1 & mAP & 备注 \\
+\midrule
+Acoustic-only & 0.851 & 0.576 & 0.659 & LOO 支持度 sanity baseline \\
+MERT full-mix & 0.851 & 0.576 & 0.686 & 已验证 CUDA MERT embedding \\
+MERT + Acoustic & 0.851 & 0.576 & 0.647 & 融合传统声学特征 \\
+Stem Acoustic & 0.851 & 0.576 & 0.683 & 13 首 Demucs stems batch 已运行 \\
+Stem MERT & 0.851 & 0.576 & 0.653 & 声部 MERT 作为后续扩展 \\
+Fusion (Ours) & 0.851 & 0.576 & 0.647 & 完整方法的脚本闭环 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+由于当前只有 13 首本地歌曲，且标签主要来自 acoustic prior 与规则伪标签，不同模式在 tiny LOO sanity check 中得到接近的 F1。这个结果不能说明各方法性能相同，只说明当前样本不足以支撑可靠消融结论。更有意义的观察来自系统链路：MERT embedding 已能在 RTX 4060 Ti 上抽取，13 首歌曲的 Demucs stems batch 已能运行，报告生成能够区分 tag-only baseline 与 evidence-grounded 模式。后续若加入人工标签和更大规模合法数据，才适合比较 MERT、stem 和 fusion 的真实增益。
+
+\subsection{Stem Contribution 结果}
+
+表\ref{tab:contribution} 展示 \textit{01 Celebrate} case study 中不同标签的主要贡献声部。当前贡献来自 rule-based acoustic fallback，用于解释证据来源，不等同于严格因果归因。
+
+\begin{table}[H]
+\centering
+\caption{Stem contribution case study（\textit{01 Celebrate}，rule-based acoustic fallback）。}
+\label{tab:contribution}
+\small
+\begin{tabular}{p{0.20\linewidth}p{0.22\linewidth}p{0.28\linewidth}p{0.22\linewidth}}
+\toprule
+标签 & 主要贡献来源 & 证据 & 解释 \\
+\midrule
+dance-pop & drums + rhythm & score=0.771，drums contribution=0.231 & 鼓组和律动是舞曲标签的主要证据 \\
+energetic & drums + rhythm & score=0.758，drums contribution=0.228 & 鼓组起音和中速节拍共同形成推动感 \\
+pre-chorus build-up & structure & score=0.720，structure contribution=1.000 & 结构规则检测到副歌前蓄力段 \\
+drop chorus & bass + structure & score=0.466，bass contribution=0.116，structure contribution=1.000 & 低频与重复高能段共同支持 drop/chorus 候选 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{结构分析结果}
+
+表\ref{tab:segments} 给出 \textit{01 Celebrate} 的段落结构分析片段。该结果从 \texttt{analysis.json} 自动导出，仍需人工听感复核。
+
+\begin{table}[H]
+\centering
+\caption{段落结构分析示例（\textit{01 Celebrate}）。}
+\label{tab:segments}
+\small
+\begin{tabular}{p{0.17\linewidth}p{0.18\linewidth}p{0.12\linewidth}p{0.25\linewidth}p{0.20\linewidth}}
+\toprule
+时间范围 & 段落标签 & 置信度 & 主要证据 & 赏析解释 \\
+\midrule
+0.0--17.1s & intro & 0.72 & 开头段且能量/节奏较克制 & 建立开场氛围 \\
+17.1--34.2s & chorus/drop & 0.82 & 高能且与其他段落重复性较高 & 提供 hook 或副歌释放 \\
+68.4--84.6s & transition & 0.52 & 能量或节奏介于主歌与副歌之间 & 承担段落过渡 \\
+126.8--147.0s & pre-chorus & 0.72 & 位于高能段之前并呈蓄力/上升 & 为后续副歌蓄力 \\
+170.9--188.4s & outro & 0.68 & 末段能量较低或呈收束趋势 & 完成尾声收束 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{报告人工评测}
+
+为验证 evidence-grounded 报告是否优于 tag-only baseline，本文设计 A/B 人工评测。评测者不知道 A/B 对应哪种系统，对每首歌的两份报告进行评分。
+当前项目已生成 \texttt{outputs/research/human\_eval\_sheet.csv}，包含 13 首歌曲的 tag-only 与 evidence-grounded A/B 盲评路径，但尚未完成正式人工打分。因此本文不报告人工评测均值或显著性结论，主要报告 case study 与 tiny sanity check。
+
+\begin{table}[H]
+\centering
+\caption{人工评测结果模板（A/B 表已生成，分数待人工填写）。}
+\label{tab:human_eval}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+系统 & Accuracy & Evidence & Informativeness & K-pop Specificity & Fluency \\
+\midrule
+Tag-only baseline & 未评分 & 未评分 & 未评分 & 未评分 & 未评分 \\
+Evidence-grounded (Ours) & 未评分 & 未评分 & 未评分 & 未评分 & 未评分 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+若 evidence-grounded 报告在 evidence grounding 和 informativeness 维度上优于 baseline，则说明引入段落、声部和音频证据能够提高赏析报告的实用性。若 fluency 不如 baseline，则可能是模板化报告过于机械，需要进一步优化文本组织。
+
+\section{案例分析}
+
+本节以本地歌曲 \textit{01 Celebrate} 为例展示系统输出。由于版权限制，本文不公开音频，仅展示从本地音频提取的统计结果和图表。
+
+\subsection{基础音频特征}
+
+系统估计该曲 BPM 为 112.3，调性为 G major。自动标签的最高候选包括 dance-pop、energetic、pre-chorus build-up、heavy drums、k-pop dance 和 confident。需要注意，这些标签来自 acoustic prior 与规则伪标签，尚不等同于人工真值或大规模训练模型预测。
+
+\subsection{段落推进}
+
+系统将 126.8--147.0s 识别为 pre-chorus，依据是该段位于高能段之前并呈现蓄力/上升趋势。17.1--34.2s、34.2--51.3s 和 51.3--68.4s 等多个片段被识别为 chorus/drop 候选，依据是段落能量较高、节奏活跃，并且与其他高能段具有较高重复性。该曲未检测到明确 dance break；由于基础 batch 未对全曲启用 stems，因此这一结论仍需人工听感或 Demucs 分轨结果复核。
+
+\subsection{声部贡献}
+
+Stem contribution 显示，energetic 标签主要来自 drums 与 rhythm 特征；chorus energy lift 标签主要来自 structure 与 bass；vocal layering 标签主要来自 vocals stem 在副歌段的能量占比提升。该结果符合 K-pop 中常见的“主歌克制 - pre-chorus 蓄力 - 副歌释放”的编曲叙事。
+
+\section{讨论}
+
+\subsection{与传统音乐自动标注的对比}
+
+传统音乐自动标注主要输出标签，而 \method{} 将标签与证据绑定。例如，系统不仅输出 energetic，还输出该标签与 BPM、鼓组起音密度、副歌能量抬升之间的关系。这种解释对于音乐赏析更有帮助，也更符合课程中音频特征分析的目标。
+
+\subsection{与端到端音乐 Caption 模型的对比}
+
+MusicCaps、LP-MusicCaps 和 MusiLingo 等工作展示了端到端音乐描述的潜力\cite{musiccaps2023,doh2023lpmusiccaps,deng2023musilingo}。但端到端模型通常需要大量音频-文本配对数据，且生成文本不一定能追溯到具体音频证据。相比之下，本文采用 evidence-grounded generation，虽然语言表达可能不如大模型自然，但更适合低资源场景和课程项目，也更容易解释每条结论的依据。
+
+\subsection{K-pop 特化分析的意义}
+
+K-pop 歌曲的制作目标往往不仅是听觉播放，还包括舞台表演、舞蹈记忆点和概念呈现。因此，dance break、chant hook、drop chorus、vocal layering 等标签比普通 genre 标签更能体现 K-pop 的音乐特点。本文的标签体系和段落规则尝试将这些概念转化为可计算的音频证据。
+
+\subsection{局限性}
+
+本文仍存在以下局限：
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{小样本限制：} 13 首本地 K-pop 音频只能用于 demo 和 case study，不能证明模型泛化能力。
+    \item \textbf{伪标签噪声：} 弱标注来自规则和模型预测，可能与专业音乐分析存在偏差。
+    \item \textbf{段落标签主观性：} intro、verse、pre-chorus、chorus/drop 等结构在不同歌曲中并不总是边界清晰。
+    \item \textbf{源分离误差：} Demucs 分离结果可能存在串音和伪影，影响 stem contribution。
+    \item \textbf{赏析文本模板化：} 当前报告主要基于规则模板，表达自然度仍有提升空间。
+\end{enumerate}
+
+\subsection{未来工作}
+
+未来可从以下方向扩展：第一，使用更大规模合法数据集训练 K-pop 标签分类器；第二，引入人工标注规范和多标注者一致性分析；第三，结合歌词、MV 或舞蹈视频进行多模态 K-pop 赏析；第四，在 evidence graph 基础上接入轻量语言模型，使报告表达更自然但仍保持证据可追溯。
+
+\section{结论}
+
+本文提出 \method{}，一个面向 K-pop 的可解释音乐信息检索与自动赏析系统。系统利用预训练音乐表征、声部分离、结构分析和 K-pop 特化标签体系，将本地音频转换为风格、情绪、编曲、段落和声部贡献等结构化信息，并进一步生成中文赏析报告。与 tag-only baseline 相比，本文方法的核心优势在于 evidence-grounded：每条关键结论尽量绑定可追溯的音频证据，例如 BPM、onset density、loudness change、stem energy 和 segment boundary。该系统适合在单张 RTX 4060 Ti 条件下实现，并可作为课程大作业和开源项目的基础。后续工作将重点补充大规模合法训练数据、完善人工标注和评测流程，并提升报告生成的自然度与专业性。
+
+\section*{复现实验与开源说明}
+\addcontentsline{toc}{section}{复现实验与开源说明}
+
+项目计划以开源形式发布代码、配置文件、训练脚本和示例报告，但不发布任何未授权商业音乐音频。用户可将本地音频放入 \texttt{twice/} 或其他私有目录运行分析。仓库应在 \texttt{.gitignore} 中排除 \texttt{*.flac}、\texttt{*.mp3}、\texttt{*.wav}、\texttt{twice/}、\texttt{outputs/}、\texttt{data/local/} 和 \texttt{checkpoints/} 等本地数据与模型文件。
+
+\section*{致谢}
+\addcontentsline{toc}{section}{致谢}
+
+感谢《音频信息处理》课程提供的音频信号分析与音乐信息检索基础。本文代码实现参考了 librosa、MERT、Demucs 等开源工具和模型。
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\appendix
+\section{附录 A：K-pop 标签定义示例}
+
+\begin{longtable}{p{0.23\linewidth}p{0.25\linewidth}p{0.42\linewidth}}
+\caption{标签定义与标注建议示例。}\\
+\toprule
+标签 & 中文定义 & 标注建议 \\
+\midrule
+\endfirsthead
+\toprule
+标签 & 中文定义 & 标注建议 \\
+\midrule
+\endhead
+chorus energy lift & 副歌/drop 相比前一段能量明显抬升 & 若 RMS、鼓组密度或低频能量在副歌候选段明显提升，可勾选；若只是旋律进入但能量变化不明显，标为不确定。 \\
+dance break & 人声减少，鼓/贝斯/伴奏成为中心，适合舞蹈展示的段落 & 若某段 vocal energy 下降且 drums/other onset density 较高，可勾选。 \\
+vocal layering & 副歌或高潮段人声厚度明显增加 & 若 vocals stem 能量提高，且听感上出现叠唱、和声或多人声加厚，可勾选。 \\
+chant hook & 重复、口号式、容易跟唱的 hook & 若副歌或 post-chorus 出现短句重复，且节奏强烈，可勾选；仅凭音频较难判断时标为不确定。 \\
+bridge contrast & 中后段出现与前后明显不同的能量、和声或音色 & 若 bridge 候选段能量降低、人声突出或和声色彩变化明显，可勾选。 \\
+\bottomrule
+\end{longtable}
+
+\section{附录 B：人工评测表模板}
+
+\begin{table}[H]
+\centering
+\caption{人工评测表字段。}
+\begin{tabular}{ll}
+\toprule
+字段 & 说明 \\
+\midrule
+track\_id & 歌曲匿名 ID \\
+report\_A / report\_B & 两种报告路径，顺序随机 \\
+accuracy\_A/B & 描述是否符合听感，1--5 分 \\
+evidence\_A/B & 是否有清晰依据，1--5 分 \\
+informativeness\_A/B & 信息量是否充足，1--5 分 \\
+kpop\_specificity\_A/B & 是否体现 K-pop 特点，1--5 分 \\
+fluency\_A/B & 中文表达是否自然，1--5 分 \\
+preference & 更偏好 A、B 或 tie \\
+notes & 备注 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
