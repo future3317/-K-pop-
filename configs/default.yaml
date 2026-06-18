@@ -41,6 +41,7 @@ report:
   include_debug: false
   title_prefix: KPopScope Analysis
   mode: evidence_grounded
+  detail: readable
 
 output:
   plots: true

@@ -284,6 +284,101 @@ def _infer_labels(segments: list[dict], duration: float) -> list[dict]:
     return segments
 
 
+def _unique_evidence(items: list[str]) -> list[str]:
+    out: list[str] = []
+    for item in items:
+        text = str(item)
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
+def _merge_adjacent_same_label(segments: list[dict], max_gap: float = 2.0) -> list[dict]:
+    if not segments:
+        return segments
+    merged: list[dict] = []
+    for seg in segments:
+        label = str(seg.get("label", seg.get("label_guess", "unknown")))
+        if merged:
+            prev = merged[-1]
+            prev_label = str(prev.get("label", prev.get("label_guess", "unknown")))
+            gap = float(seg.get("start", 0.0) or 0.0) - float(prev.get("end", 0.0) or 0.0)
+            if label == prev_label and gap <= max_gap:
+                prev_dur = max(float(prev.get("duration", 0.0) or 0.0), 1e-8)
+                seg_dur = max(float(seg.get("duration", 0.0) or 0.0), 1e-8)
+                total = prev_dur + seg_dur
+                for key in ["mean_energy", "energy_mean", "mean_onset", "onset_density", "mean_centroid", "spectral_brightness", "chroma_stability", "repetition_score", "label_confidence"]:
+                    prev[key] = float((float(prev.get(key, 0.0) or 0.0) * prev_dur + float(seg.get(key, 0.0) or 0.0) * seg_dur) / total)
+                prev["end"] = float(seg.get("end", prev.get("end", 0.0)) or 0.0)
+                prev["duration"] = float(prev["end"] - float(prev.get("start", 0.0) or 0.0))
+                prev["boundary_strength_end"] = float(seg.get("boundary_strength_end", prev.get("boundary_strength_end", 0.0)) or 0.0)
+                prev["boundary_strength"] = max(float(prev.get("boundary_strength", 0.0) or 0.0), float(seg.get("boundary_strength", 0.0) or 0.0))
+                ev = list(prev.get("evidence", prev.get("label_evidence", [])) or []) + list(seg.get("evidence", seg.get("label_evidence", [])) or [])
+                prev["evidence"] = _unique_evidence(ev)[:4]
+                prev["label_evidence"] = prev["evidence"]
+                continue
+        merged.append(dict(seg))
+    for i, seg in enumerate(merged):
+        seg["index"] = int(i)
+    return merged
+
+
+def _postprocess_chorus_candidates(segments: list[dict]) -> list[dict]:
+    if not segments:
+        return segments
+    energies = np.array([float(s.get("energy_mean", s.get("mean_energy", 0.0)) or 0.0) for s in segments], dtype=float)
+    onsets = np.array([float(s.get("onset_density", s.get("mean_onset", 0.0)) or 0.0) for s in segments], dtype=float)
+    high_e = float(np.percentile(energies, 65)) if energies.size else 0.0
+    high_o = float(np.percentile(onsets, 60)) if onsets.size else 0.0
+    candidates: list[tuple[float, int]] = []
+    for i, seg in enumerate(segments):
+        if "chorus" not in str(seg.get("label", seg.get("label_guess", ""))):
+            continue
+        prev = segments[i - 1] if i > 0 else {}
+        e = float(seg.get("energy_mean", seg.get("mean_energy", 0.0)) or 0.0)
+        o = float(seg.get("onset_density", seg.get("mean_onset", 0.0)) or 0.0)
+        rep = float(seg.get("repetition_score", 0.0) or 0.0)
+        energy_delta = e - float(prev.get("energy_mean", prev.get("mean_energy", e)) or e)
+        onset_delta = o - float(prev.get("onset_density", prev.get("mean_onset", o)) or o)
+        structurally_plausible = i > 0 and str(prev.get("label", prev.get("label_guess", ""))) in {"intro", "verse", "pre-chorus", "transition", "high-energy section", "refrain"}
+        repeated_later = sum(1 for s in segments if float(s.get("repetition_score", 0.0) or 0.0) >= 0.82 and float(s.get("energy_mean", s.get("mean_energy", 0.0)) or 0.0) >= high_e) >= 2
+        strict = e >= high_e and (rep >= 0.82 or energy_delta >= 0.08 or onset_delta >= 0.08) and (structurally_plausible or repeated_later)
+        score = e * 0.45 + rep * 0.30 + max(0.0, energy_delta) * 0.15 + max(0.0, onset_delta) * 0.10
+        if strict:
+            candidates.append((float(score), i))
+        else:
+            seg["label"] = seg["label_guess"] = "high-energy section"
+            seg["label_confidence"] = min(float(seg.get("label_confidence", 0.5) or 0.5), 0.56)
+            seg["evidence"] = ["能量或重复性较高，但缺少足够的能量抬升/结构位置证据，暂不确认具体功能。"]
+            seg["label_evidence"] = seg["evidence"]
+
+    keep = {i for _, i in sorted(candidates, reverse=True)[:3]}
+    for _, i in candidates:
+        if i in keep:
+            continue
+        seg = segments[i]
+        rep = float(seg.get("repetition_score", 0.0) or 0.0)
+        seg["label"] = seg["label_guess"] = "refrain" if rep >= 0.82 else "high-energy section"
+        seg["label_confidence"] = min(float(seg.get("label_confidence", 0.5) or 0.5), 0.60)
+        seg["evidence"] = ["与主要 chorus/drop 候选相似，但为避免过度标注，归为重复高能段。"]
+        seg["label_evidence"] = seg["evidence"]
+
+    for i, seg in enumerate(segments):
+        prev_e = float(segments[i - 1].get("energy_mean", segments[i - 1].get("mean_energy", 0.0)) or 0.0) if i > 0 else float(seg.get("energy_mean", seg.get("mean_energy", 0.0)) or 0.0)
+        prev_o = float(segments[i - 1].get("onset_density", segments[i - 1].get("mean_onset", 0.0)) or 0.0) if i > 0 else float(seg.get("onset_density", seg.get("mean_onset", 0.0)) or 0.0)
+        seg["energy_delta"] = float(float(seg.get("energy_mean", seg.get("mean_energy", 0.0)) or 0.0) - prev_e)
+        seg["onset_density_delta"] = float(float(seg.get("onset_density", seg.get("mean_onset", 0.0)) or 0.0) - prev_o)
+    return segments
+
+
+def _postprocess_segments(segments: list[dict]) -> list[dict]:
+    segments = _merge_adjacent_same_label(segments, max_gap=2.0)
+    segments = _postprocess_chorus_candidates(segments)
+    for i, seg in enumerate(segments):
+        seg["index"] = int(i)
+    return segments
+
+
 def _structure_summary(segments: list[dict]) -> dict:
     labels = [str(s.get("label", s.get("label_guess", "unknown"))) for s in segments]
     chorus = [
@@ -425,7 +520,7 @@ def segment_track(
         seg["repetition_score"] = float(rep_score)
         seg["nearest_repeated_segment"] = None if rep_idx is None else int(rep_idx)
 
-    segments = _infer_labels(segments, duration)
+    segments = _postprocess_segments(_infer_labels(segments, duration))
 
     return {
         "boundaries": [float(b) for b in boundaries],

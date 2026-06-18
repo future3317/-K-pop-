@@ -27,6 +27,7 @@ def analyze(
     classifier_path: str | Path | None = None,
     fallback_to_acoustic_prior: bool | None = None,
     report_mode: str | None = None,
+    report_detail: str | None = None,
 ) -> dict[str, Any]:
     """Run the full KPopScope analysis pipeline.
 
@@ -66,6 +67,8 @@ def analyze(
         config.setdefault("models", {})["fallback_to_acoustic_prior"] = bool(fallback_to_acoustic_prior)
     if report_mode is not None:
         config.setdefault("report", {})["mode"] = str(report_mode)
+    if report_detail is not None:
+        config.setdefault("report", {})["detail"] = str(report_detail)
 
     audio_path = Path(audio_path)
     output_dir = ensure_dir(output_dir)
@@ -132,6 +135,7 @@ def analyze(
         title_prefix=str(config.get("report", {}).get("title_prefix", "KPopScope Analysis")),
         report_mode=str(config.get("report", {}).get("mode", "evidence_grounded")),
         stem_contribution=contribution,
+        report_detail=str(config.get("report", {}).get("detail", "readable")),
     )
 
     result = {

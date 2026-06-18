@@ -28,6 +28,11 @@ def safe_name(path: Path) -> str:
     return text[:80] or "track"
 
 
+def display_name(path: Path) -> str:
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return path.name.encode(encoding, errors="replace").decode(encoding, errors="replace")
+
+
 def audio_files(input_dir: Path) -> list[Path]:
     return sorted(p for p in input_dir.rglob("*") if p.is_file() and p.suffix.lower() in AUDIO_EXTS)
 
@@ -102,6 +107,7 @@ def run_batch(args: argparse.Namespace) -> list[dict]:
                 use_mert=args.mert,
                 classifier_path=args.classifier,
                 report_mode="evidence_grounded",
+                report_detail=args.report_detail,
             )
             if args.both_report_modes:
                 tag_only = analyze(
@@ -112,15 +118,16 @@ def run_batch(args: argparse.Namespace) -> list[dict]:
                     use_mert=args.mert,
                     classifier_path=args.classifier,
                     report_mode="tag_only",
+                    report_detail=args.report_detail,
                 )
                 (track_dir / "report_tag_only.md").write_text(tag_only["report_markdown"], encoding="utf-8")
                 (track_dir / "report_evidence_grounded.md").write_text(result["report_markdown"], encoding="utf-8")
             rows.append(summarize_result(src, track_dir, result))
-            print(f"ok: {src.name} -> {track_dir}")
+            print(f"ok: {display_name(src)} -> {track_dir}")
         except Exception as exc:
             with open(errors_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"file": src.name, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False) + "\n")
-            print(f"failed: {src.name}: {exc}")
+                f.write(json.dumps({"file": display_name(src), "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False) + "\n")
+            print(f"failed: {display_name(src)}: {type(exc).__name__}: {exc}")
 
     if rows:
         with open(output_dir / "summary.csv", "w", encoding="utf-8", newline="") as f:
@@ -146,6 +153,7 @@ def main() -> int:
     ap.add_argument("--device", default="cuda", help="Reserved for MERT/Demucs configs; default cuda.")
     ap.add_argument("--num-workers", type=int, default=1, help="Currently processed sequentially for GPU safety.")
     ap.add_argument("--both-report-modes", action="store_true")
+    ap.add_argument("--report-detail", choices=["readable", "technical"], default="readable")
     args = ap.parse_args()
     rows = run_batch(args)
     print(f"finished {len(rows)} tracks")

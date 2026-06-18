@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--classifier", type=str, default=None, help="Path to trained K-pop classifier checkpoint")
     p.add_argument("--no-tag-fallback", action="store_true", help="Fail if MERT/classifier tagging is unavailable instead of using acoustic prior")
     p.add_argument("--report-mode", choices=["tag_only", "evidence_grounded"], default=None, help="Report generation mode")
+    p.add_argument("--report-detail", choices=["readable", "technical"], default=None, help="Evidence report detail level")
     return parser
 
 
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
             classifier_path=args.classifier,
             fallback_to_acoustic_prior=not args.no_tag_fallback,
             report_mode=args.report_mode,
+            report_detail=args.report_detail,
         )
         out = Path(args.output)
         print(f"Analysis complete: {out.resolve()}")
