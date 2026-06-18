@@ -12,7 +12,7 @@ st.title("KPopScope: K-pop 音乐分析与赏析")
 st.caption("上传本地音频，生成 MIR 特征、段落分析、标签和中文赏析报告。请只上传你有权分析的音频。")
 
 uploaded = st.file_uploader("选择音频文件", type=["mp3", "wav", "flac", "m4a", "ogg"])
-use_stems = st.checkbox("启用 Demucs 声部分离（较慢，需要安装 demucs）", value=False)
+use_stems = st.checkbox("启用 audio-separator 声部分离（较慢，需要安装 audio-separator）", value=False)
 plots = st.checkbox("生成图像", value=True)
 use_mert = st.checkbox("抽取 MERT embedding（需要 torch/transformers，会较慢）", value=False)
 classifier_path = st.text_input("K-pop classifier checkpoint 路径（可选）", value="")

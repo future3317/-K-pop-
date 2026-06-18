@@ -225,6 +225,68 @@ def _group_explanation(group: str, items: list[dict]) -> str:
     return f"其他候选包括 {names}。"
 
 
+def _listening_appreciation(features: dict, tag_result: dict, stem_features: dict | None = None, grounded: bool = False) -> list[str]:
+    grouped = _grouped_tags(tag_result)
+    styles = {str(i.get("tag")) for i in grouped[STYLE_GROUP]}
+    moods = {str(i.get("tag")) for i in grouped[MOOD_GROUP]}
+    arrangements = {str(i.get("tag")) for i in grouped[ARRANGEMENT_GROUP]}
+    bpm = float(features.get("tempo", {}).get("bpm", 0.0) or 0.0)
+    onset_density = float(features.get("onset", {}).get("onset_density_per_sec", 0.0) or 0.0)
+    centroid = float(features.get("spectral", {}).get("centroid_hz", {}).get("mean", 0.0) or 0.0)
+    low_ratio = _low_frequency_ratio(features)
+    dyn = _loudness_dynamic_range(features)
+    paragraphs: list[str] = []
+
+    if {"dance-pop", "k-pop dance"} & styles or "energetic" in moods:
+        paragraphs.append(
+            f"整体听感首先是舞台导向的：{_fmt(bpm, 1)} BPM 和 {_fmt(onset_density, 2)} 次/秒的起音密度，"
+            "让歌曲更像围绕齐舞、重拍和副歌冲击来组织，而不是以舒缓叙事为中心。"
+            "这种写法适合 K-pop 中常见的“先建立律动，再用 hook 拉高记忆点”的制作逻辑。"
+        )
+    else:
+        paragraphs.append(
+            f"整体速度约 {_fmt(bpm, 1)} BPM，起音密度为 {_fmt(onset_density, 2)} 次/秒。"
+            "系统没有把它简单判成持续高能舞曲，因此更适合把当前结果理解为一种待人工复核的整体听感轮廓。"
+        )
+
+    if {"confident", "dark", "dramatic"} & moods:
+        paragraphs.append(
+            "情绪上，歌曲更偏自信、冷色或带张力的表达。"
+            "这类气质通常不靠单一旋律完成，而是由较硬的鼓点、低频推进、紧凑节奏和人声姿态共同塑造；"
+            "因此听感上会更接近“压迫感/力量感”而不是轻松可爱的路线。"
+        )
+    elif {"bright", "cute", "playful", "euphoric"} & moods:
+        paragraphs.append(
+            "情绪上，标签更偏明亮、轻快或上扬。"
+            "这会让歌曲的副歌和 hook 更容易服务于即时记忆点，也更适合明快舞台和群体互动。"
+        )
+
+    texture_bits: list[str] = []
+    if centroid >= 2800:
+        texture_bits.append("高频亮度较突出，可能让 synth、hi-hat 或 FX 更容易浮在混音前景")
+    if low_ratio >= 0.18 or {"low-frequency drive", "synth bass", "sub-bass drive"} & arrangements:
+        texture_bits.append("低频推进感较强，能为舞蹈段落提供身体性的重心")
+    if dyn >= 10:
+        texture_bits.append("响度动态有一定起伏，适合形成段落间的推进和释放")
+    if texture_bits:
+        source = "结合段落和声学证据看" if grounded else "从标签和整曲声学特征看"
+        paragraphs.append(f"{source}，" + "；".join(texture_bits) + "。")
+
+    if {"drop chorus", "chorus energy lift", "pre-chorus build-up", "pre-chorus buildup"} & arrangements:
+        paragraphs.append(
+            "编曲上最值得关注的是“蓄力-释放”的可能性：歌曲可能先用节奏和音色密度建立期待，"
+            "再在副歌或 hook 区域释放更直接的能量。这个判断在 tag-only 中只是整体倾向；"
+            "在 evidence-grounded 中则会进一步参考段落位置、能量变化和重复性。"
+        )
+
+    if grounded and stem_features:
+        paragraphs.append("由于本次有 stems，报告后面会把这种听感拆到 vocals、drums、bass、other 等声部上，避免只用整曲印象解释所有现象。")
+    elif grounded:
+        paragraphs.append("由于本次没有可用 stems，报告会克制地把鼓组、低频和人声描述写成整曲声学推测，而不是声部分离结论。")
+
+    return paragraphs[:4]
+
+
 def _tag_only_paragraphs(features: dict, tag_result: dict) -> list[str]:
     grouped = _grouped_tags(tag_result)
     bpm = float(features.get("tempo", {}).get("bpm", 0.0) or 0.0)
@@ -294,7 +356,7 @@ def _generate_tag_only_report(audio_path: Path, features: dict, tag_result: dict
     lines: list[str] = []
     lines.append(f"# KPopScope Tag-only Baseline: {audio_path.name}")
     lines.append("")
-    lines.append("> 本报告是标签驱动 baseline：它使用基础音频特征、标签分数和 taxonomy 描述生成整体赏析，不使用段落时间线、Demucs stems 或 stem contribution。")
+    lines.append("> 本报告是标签驱动 baseline：它使用基础音频特征、标签分数和 taxonomy 描述生成整体赏析，不使用段落时间线、source-separation stems 或 stem contribution。")
     if tag_result.get("source", "").startswith("acoustic_prior"):
         lines.append("> 当前标签来自声学先验和规则 fallback，不等同于训练好的 K-pop 模型预测。")
     lines.append("")
@@ -334,6 +396,9 @@ def _generate_tag_only_report(audio_path: Path, features: dict, tag_result: dict
     lines.append("")
     lines.append("## 3. 基于标签的整体听感分析")
     lines.append("")
+    for paragraph in _listening_appreciation(features, tag_result, grounded=False):
+        lines.append(paragraph)
+        lines.append("")
     for paragraph in _tag_only_paragraphs(features, tag_result):
         lines.append(paragraph)
         lines.append("")
@@ -465,7 +530,7 @@ def _readable_stem_section(features: dict, stem_features: dict | None, stem_cont
     lines.append("")
     if not stem_features:
         lines.append(
-            "本次未启用或未成功生成 Demucs stems，因此无法判断 vocals、drums、bass、other 的独立贡献。"
+            "本次未启用或未成功生成 source-separation stems，因此无法判断 vocals、drums、bass、other 的独立贡献。"
             "以下关于鼓组、低频或人声的说法仅来自整曲声学特征，而不是声部分离结果。"
         )
         lines.append("")
@@ -474,13 +539,15 @@ def _readable_stem_section(features: dict, stem_features: dict | None, stem_cont
         lines.append("")
         return lines
 
-    lines.append("本次检测到 Demucs stems，因此只展示高分标签中最有信息量的 top contributing sources，不显示完整矩阵或接近 0 的贡献值。")
+    lines.append("本次检测到 source-separation stems，因此可以把整体听感进一步拆成 vocals、drums、bass、other 的相对作用。这里不展示完整矩阵，只保留最能帮助理解音乐听感的声部线索。")
     lines.append("")
     tag_rows = list((stem_contribution or {}).get("tag_contributions", []) or [])[:3]
     if not tag_rows:
         lines.append("- 当前没有稳定的声部贡献结果。")
         lines.append("")
         return lines
+
+    grouped_rows: dict[str, dict] = {}
     for item in tag_rows:
         contrib = item.get("contribution", {}) or {}
         ranked = [
@@ -489,9 +556,25 @@ def _readable_stem_section(features: dict, stem_features: dict | None, stem_cont
             if float(contrib.get(name, 0.0) or 0.0) > 0.05
         ]
         ranked.sort(key=lambda x: x[1], reverse=True)
-        sources = "、".join(f"{name} {_fmt(value, 2)}" for name, value in ranked[:3]) or "未形成明显声部贡献"
-        evidence = "；".join(_dedupe(item.get("evidence", []) or [])[:2])
-        lines.append(f"- **{item.get('tag')}**：{sources}。{evidence or '依据为 stem 级声学特征的相对强弱。'}")
+        key = ";".join(name for name, _ in ranked[:3]) or "none"
+        if key not in grouped_rows:
+            grouped_rows[key] = {"tags": [], "ranked": ranked, "evidence": []}
+        grouped_rows[key]["tags"].append(str(item.get("tag")))
+        grouped_rows[key]["evidence"].extend(item.get("evidence", []) or [])
+
+    for group in grouped_rows.values():
+        tags = " / ".join(group["tags"])
+        sources = "、".join(f"{name} {_fmt(value, 2)}" for name, value in group["ranked"][:3]) or "未形成明显声部贡献"
+        evidence = "；".join(_dedupe(group["evidence"])[:2])
+        if "drums" in sources:
+            reading = "这说明歌曲的舞台推动力主要由鼓组和节奏密度支撑，听感上会更强调身体律动和重拍冲击。"
+        elif "bass" in sources:
+            reading = "这说明低频声部对歌曲的重心更关键，听感上会更有下盘和推进感。"
+        elif "vocals" in sources:
+            reading = "这说明人声层次对标签判断更关键，听感上会更依赖声线叠加、呼应或 hook 记忆点。"
+        else:
+            reading = "这说明该标签更像由整曲结构或混合声学线索共同支撑。"
+        lines.append(f"- **{tags}**：主要来源为 {sources}。{reading}{('依据：' + evidence) if evidence else ''}")
     lines.append("")
     return lines
 
@@ -537,6 +620,11 @@ def _generate_readable_evidence_report(
             lines.append(f"![{title}]({_md_path(figure_paths[key_name])})")
             lines.append("")
     lines.extend(_readable_tag_section(tag_result))
+    lines.append("### 听感赏析")
+    lines.append("")
+    for paragraph in _listening_appreciation(features, tag_result, stem_features=stem_features, grounded=True):
+        lines.append(paragraph)
+        lines.append("")
     lines.append("## 4. 结构与段落摘要")
     lines.append("")
     lines.append(_chorus_summary(features))
@@ -569,7 +657,10 @@ def _generate_readable_evidence_report(
     lines.append("## 6. 不确定性说明")
     lines.append("")
     lines.append("- 本报告将自动段落、声学特征和标签结果作为证据线索，不等同于人工音乐学标注。")
-    lines.append("- 若未启用 stems，关于鼓组、低频和人声的描述均来自整曲特征，不能解释为独立声部贡献。")
+    if stem_features:
+        lines.append("- 声部贡献来自 source-separation 结果和 stem 级声学特征，仍可能受到分离伪影影响，应作为辅助证据而不是人工混音分析。")
+    else:
+        lines.append("- 若未启用 stems，关于鼓组、低频和人声的描述均来自整曲特征，不能解释为独立声部贡献。")
     lines.append("- readable 模式会主动合并相邻重复段落，并只展示最重要的候选；需要完整调试信息时可使用 `--report-detail technical`。")
     lines.append("")
     return "\n".join(lines)

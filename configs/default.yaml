@@ -14,9 +14,11 @@ features:
 
 stems:
   enabled: false
-  demucs_model: htdemucs
+  backend: audio_separator
+  model: model_bs_roformer_ep_317_sdr_12.9755.ckpt
+  model_dir: null
   device: auto
-  keep_demucs_output: true
+  keep_output: true
 
 models:
   # Recommended route: train a checkpoint with scripts/train_classifier.py,

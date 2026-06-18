@@ -23,7 +23,7 @@ This repository is designed for a course project in **Audio Information Processi
   - trained path: **MERT embedding + lightweight K-pop multi-label classifier**
   - fallback path: transparent acoustic-prior classifier when no checkpoint is configured
   - tags include `dance-pop`, `electropop`, `trap-pop`, `jersey club influence`, `vocal layering`, `drop chorus`, `pre-chorus build-up`, `dance break likely`, etc.
-- Optionally call **Demucs** to split audio into `vocals/drums/bass/other`, then analyze each stem.
+- Optionally call **audio-separator** to split audio into `vocals/drums/bass/other` or the stems supported by the selected model, then analyze each stem.
 - Generate:
   - `analysis.json`
   - `report.md`
@@ -52,10 +52,10 @@ With optional model/stem/app dependencies:
 pip install -e ".[all]"
 ```
 
-Demucs can be heavy. If installation fails, install PyTorch matching your CUDA environment first, then:
+Stem separation uses `audio-separator`, which can download UVR/RoFormer/MDX-style models automatically. If installation fails, install PyTorch matching your CUDA environment first, then:
 
 ```bash
-pip install demucs
+pip install audio-separator
 ```
 
 ## Quick start
@@ -66,10 +66,16 @@ Analyze one local file:
 kpop-scope analyze ./song.mp3 --output outputs/song --plots
 ```
 
-With stem-wise analysis using Demucs:
+With stem-wise analysis using audio-separator:
 
 ```bash
 kpop-scope analyze ./song.mp3 --output outputs/song --stems --plots
+```
+
+You can override the separator model:
+
+```bash
+kpop-scope analyze ./song.mp3 --output outputs/song --stems --stem-model model_bs_roformer_ep_317_sdr_12.9755.ckpt
 ```
 
 With MERT embedding and a trained classifier checkpoint:
@@ -204,7 +210,7 @@ The 13-song local demo is only suitable for demo, smoke testing, and qualitative
 Do not publish local copyrighted artifacts:
 
 - `TWICE/` or `twice/`
-- `outputs/`, especially Demucs stems under `outputs/twice_stems/`
+- `outputs/`, especially separated stems under `outputs/twice_stems/`
 - `data/local/`
 - MERT embeddings such as `twice_mert.npy` / `twice_acoustic.npy`
 - tiny classifier weights trained from private audio-derived labels
@@ -275,7 +281,7 @@ See [`docs/datasets.md`](docs/datasets.md) for a practical data plan.
 ```text
 kpop_scope/
   audio/       audio loading, features, key, beat, K-pop-aware segmentation
-  stems/       Demucs integration and stem-wise feature analysis
+  stems/       audio-separator integration and stem-wise feature analysis
   models/      MERT embedder, classifier, acoustic features, tagger orchestration
   explain/     K-pop interpretation rules and report generation
   visualize/   plots

@@ -11,7 +11,7 @@ local audio
   -> loader/resampling
   -> full-mix MIR features
   -> K-pop-aware structure segmentation
-  -> optional Demucs stems
+  -> optional audio-separator stems
   -> stem-wise MIR features
   -> MERT embedding + K-pop classifier checkpoint
        or acoustic-prior fallback
@@ -89,5 +89,5 @@ Each label has confidence and human-readable evidence.
 - Better repeated-section detection with self-similarity matrices.
 - Optional chord/key estimation with more robust models.
 - Learned segment labeling for intro/verse/pre-chorus/chorus/bridge/dance break.
-- Add stem-level features into the classifier input after Demucs.
+- Add stem-level features into the classifier input after source separation.
 - LLM-based report rewriting constrained by structured JSON.

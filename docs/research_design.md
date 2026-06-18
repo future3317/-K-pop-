@@ -9,7 +9,7 @@ KPopScope is framed as an explainable MIR system for K-pop appreciation, not as 
    - Arrangement labels include `pre-chorus buildup`, `chorus energy lift`, `drop chorus`, `instrumental post-chorus`, `dance break`, and `vocal layering`.
 
 2. Stem-aware interpretable tagging
-   - Demucs stems are optional.
+   - audio-separator stems are optional.
    - When available, vocals, drums, bass, and other stems provide evidence for arrangement tags.
    - Without stems, the system falls back to acoustic evidence and marks it as rule-based.
 

@@ -15,7 +15,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("audio", type=str, help="Path to local audio file")
     p.add_argument("--output", "-o", type=str, default="outputs/kpop_scope_analysis", help="Output directory")
     p.add_argument("--config", type=str, default=None, help="Optional YAML config path")
-    p.add_argument("--stems", action="store_true", help="Run Demucs stem separation if available")
+    p.add_argument("--stems", action="store_true", help="Run audio-separator stem separation if available")
+    p.add_argument("--stem-model", default=None, help="audio-separator model filename")
     p.add_argument("--plots", action="store_true", help="Generate figures (enabled by default; kept for README compatibility)")
     p.add_argument("--no-plots", action="store_true", help="Disable figure generation")
     p.add_argument("--max-duration", type=float, default=None, help="Analyze first N seconds only")
@@ -43,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
             fallback_to_acoustic_prior=not args.no_tag_fallback,
             report_mode=args.report_mode,
             report_detail=args.report_detail,
+            stem_model=args.stem_model,
         )
         out = Path(args.output)
         print(f"Analysis complete: {out.resolve()}")

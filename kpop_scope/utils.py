@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -28,10 +29,23 @@ def command_exists(command: str) -> bool:
 
 
 def run_command(cmd: list[str], cwd: str | Path | None = None) -> tuple[int, str, str]:
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
+    try:
+        import imageio_ffmpeg
+
+        ffmpeg_dir = str(Path(imageio_ffmpeg.get_ffmpeg_exe()).parent)
+        env["PATH"] = ffmpeg_dir + os.pathsep + env.get("PATH", "")
+    except Exception:
+        pass
     proc = subprocess.run(
         cmd,
         cwd=str(cwd) if cwd else None,
         text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,

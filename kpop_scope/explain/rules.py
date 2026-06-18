@@ -241,7 +241,7 @@ def build_explanations(features: dict, tag_result: dict, stem_features: dict | N
                     f"{human_time(start)}–{human_time(end)} 的 {label} 中，{dominant[0]} stem 相对更突出，可作为该段编曲重心的线索。"
                 )
     else:
-        stem_cues.append("未启用或未成功生成 stems；若要分析鼓、贝斯、人声和伴奏在副歌中的作用，建议使用 `--stems` 运行 Demucs。")
+        stem_cues.append("未启用或未成功生成 stems；若要分析鼓、贝斯、人声和伴奏在副歌中的作用，建议使用 `--stems` 运行 audio-separator。")
 
     production_cues: list[str] = []
     if _score(tag_result, "drop chorus") >= 0.45 or _score(tag_result, "chorus energy lift") >= 0.50:

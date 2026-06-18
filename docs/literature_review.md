@@ -14,7 +14,7 @@ Music structure analysis commonly uses novelty curves, self-similarity, repetiti
 
 ## Source Separation
 
-Demucs can separate a mix into vocals, drums, bass, and other stems. These stems are used as optional evidence units for arrangement interpretation.
+Modern source-separation models can separate a mix into vocals, drums, bass, and other stems. In this project, audio-separator is used as the integration layer for these models, and the separated stems are used as optional evidence units for arrangement interpretation.
 
 ## Explainable MIR
 

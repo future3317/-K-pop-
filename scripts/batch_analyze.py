@@ -108,6 +108,7 @@ def run_batch(args: argparse.Namespace) -> list[dict]:
                 classifier_path=args.classifier,
                 report_mode="evidence_grounded",
                 report_detail=args.report_detail,
+                stem_model=args.stem_model,
             )
             if args.both_report_modes:
                 tag_only = analyze(
@@ -119,6 +120,7 @@ def run_batch(args: argparse.Namespace) -> list[dict]:
                     classifier_path=args.classifier,
                     report_mode="tag_only",
                     report_detail=args.report_detail,
+                    stem_model=args.stem_model,
                 )
                 (track_dir / "report_tag_only.md").write_text(tag_only["report_markdown"], encoding="utf-8")
                 (track_dir / "report_evidence_grounded.md").write_text(result["report_markdown"], encoding="utf-8")
@@ -150,10 +152,11 @@ def main() -> int:
     ap.add_argument("--classifier", default=None)
     ap.add_argument("--skip-existing", action="store_true")
     ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--device", default="cuda", help="Reserved for MERT/Demucs configs; default cuda.")
+    ap.add_argument("--device", default="cuda", help="Reserved for model/stem configs; default cuda.")
     ap.add_argument("--num-workers", type=int, default=1, help="Currently processed sequentially for GPU safety.")
     ap.add_argument("--both-report-modes", action="store_true")
     ap.add_argument("--report-detail", choices=["readable", "technical"], default="readable")
+    ap.add_argument("--stem-model", default=None, help="audio-separator model filename")
     args = ap.parse_args()
     rows = run_batch(args)
     print(f"finished {len(rows)} tracks")

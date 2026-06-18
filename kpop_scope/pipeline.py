@@ -10,7 +10,7 @@ from .explain.report_generator import generate_report
 from .explain.rules import build_explanations
 from .explain.stem_contribution import build_stem_contribution
 from .models.tagger import predict_kpop_tags
-from .stems.demucs_runner import separate_with_demucs
+from .stems.audio_separator_runner import separate_with_audio_separator
 from .stems.stem_features import analyze_stems
 from .utils import ensure_dir, write_json, write_text
 from .visualize.plots import make_plots as create_plots
@@ -28,6 +28,7 @@ def analyze(
     fallback_to_acoustic_prior: bool | None = None,
     report_mode: str | None = None,
     report_detail: str | None = None,
+    stem_model: str | None = None,
 ) -> dict[str, Any]:
     """Run the full KPopScope analysis pipeline.
 
@@ -69,6 +70,8 @@ def analyze(
         config.setdefault("report", {})["mode"] = str(report_mode)
     if report_detail is not None:
         config.setdefault("report", {})["detail"] = str(report_detail)
+    if stem_model is not None:
+        config.setdefault("stems", {})["model"] = str(stem_model)
 
     audio_path = Path(audio_path)
     output_dir = ensure_dir(output_dir)
@@ -96,19 +99,20 @@ def analyze(
     # If no checkpoint is available, a transparent acoustic-prior classifier keeps the package runnable.
     tag_result = predict_kpop_tags(audio_path, y, sr, features, config.get("models", {}))
 
-    demucs_result = None
+    stem_result = None
     stem_features = None
     if bool(config.get("stems", {}).get("enabled", False)):
         stem_output_dir = output_dir / "stems"
-        demucs_result = separate_with_demucs(
+        stem_result = separate_with_audio_separator(
             audio_path,
             stem_output_dir,
-            model=str(config["stems"].get("demucs_model", "htdemucs")),
+            model=str(config["stems"].get("model", "model_bs_roformer_ep_317_sdr_12.9755.ckpt")),
+            model_dir=config["stems"].get("model_dir"),
             device=str(config["stems"].get("device", "auto")),
         )
-        if demucs_result.get("available"):
+        if stem_result.get("available"):
             stem_features = analyze_stems(
-                demucs_result["stems"],
+                stem_result["stems"],
                 sample_rate=int(config["audio"].get("sample_rate", 44100)),
                 hop_length=int(feat_cfg.get("hop_length", 512)),
                 n_fft=int(feat_cfg.get("n_fft", 2048)),
@@ -143,7 +147,7 @@ def analyze(
         "config": config,
         "features": features,
         "tag_result": tag_result,
-        "demucs_result": demucs_result,
+        "stem_result": stem_result,
         "stem_features": stem_features,
         "stem_contribution": contribution,
         "explanations": explanations,
